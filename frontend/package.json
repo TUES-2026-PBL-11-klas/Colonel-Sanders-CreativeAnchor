@@ -1,0 +1,23 @@
+{
+  "name": "colonel-sanders-creativeanchor",
+  "version": "1.0.0",
+  "description": "Very cool electron app",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron . --ozone-platform=x11",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TUES-2026-PBL-11-klas/Colonel-Sanders-CreativeAnchor.git"
+  },
+  "author": "Colonel Sanders",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/TUES-2026-PBL-11-klas/Colonel-Sanders-CreativeAnchor/issues"
+  },
+  "homepage": "https://github.com/TUES-2026-PBL-11-klas/Colonel-Sanders-CreativeAnchor#readme",
+  "devDependencies": {
+    "electron": "^42.3.0"
+  }
+}
