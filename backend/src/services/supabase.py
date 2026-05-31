@@ -19,4 +19,4 @@ def upload_image(file):
 
     public_url = _Client.storage.from_("chat_images").get_public_url(filename)
 
-    return filename
+    return public_url
