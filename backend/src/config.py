@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 class Config:
     API_TITLE = "User API"
     API_VERSION = "v1"
@@ -14,8 +15,8 @@ class Config:
         "https://cdn.jsdelivr.net/npm/swagger-ui-dist/"
     )
 
-    IMAGE_EXTENSIONS = {"png", "jpeg"} # da dobawim oshte mozhe bi
-
+    IMAGE_EXTENSIONS = {"png", "jpeg"}  # da dobawim oshte mozhe bi
 
     SUPABASE_URL = os.environ.get("SUPABASE_URL")
     SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+    SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET")
