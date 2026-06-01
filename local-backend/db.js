@@ -3,7 +3,31 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
-const DB_PATH = path.join(__dirname, 'local_db.json');
+const SETTINGS_PATH = path.join(__dirname, 'global_settings.json');
+
+function getGlobalSettings() {
+    const defaultWatchFolder = path.join(__dirname, 'sync_folder');
+    if (!fs.existsSync(SETTINGS_PATH)) {
+        const defaultSettings = { watchFolder: defaultWatchFolder };
+        fs.writeFileSync(SETTINGS_PATH, JSON.stringify(defaultSettings, null, 2), 'utf-8');
+        return defaultSettings;
+    }
+    try {
+        const content = fs.readFileSync(SETTINGS_PATH, 'utf-8');
+        return JSON.parse(content);
+    } catch (e) {
+        console.error("Error reading global settings:", e);
+        return { watchFolder: defaultWatchFolder };
+    }
+}
+
+function saveGlobalSettings(settings) {
+    try {
+        fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2), 'utf-8');
+    } catch (e) {
+        console.error("Error writing global settings:", e);
+    }
+}
 
 // ====================================================
 // DOMAIN MODEL SCHEMAS (Classical OOP Encapsulation)
@@ -91,26 +115,35 @@ class Chat {
 // ====================================================
 
 class LocalDatabase {
-    constructor(dbPath) {
-        this.dbPath = dbPath;
+    constructor() {
+        this.refreshActivePaths();
+    }
+
+    refreshActivePaths() {
+        const settings = getGlobalSettings();
+        this.watchFolder = settings.watchFolder;
+        this.dbPath = path.join(this.watchFolder, 'anchor_db.json');
+
+        if (!fs.existsSync(this.watchFolder)) {
+            try {
+                fs.mkdirSync(this.watchFolder, { recursive: true });
+            } catch (e) {
+                console.error("Error creating watch folder:", e);
+            }
+        }
     }
 
     readDb() {
-        const defaultWatchPath = path.join(__dirname, 'sync_folder');
         if (!fs.existsSync(this.dbPath)) {
-            return this.resetDb(defaultWatchPath);
+            return this.resetDb();
         }
         try {
             const data = fs.readFileSync(this.dbPath, 'utf-8');
             const parsed = JSON.parse(data);
-            if (!parsed.watchFolder) {
-                parsed.watchFolder = defaultWatchPath;
-                this.writeDb(parsed);
-            }
             return parsed;
         } catch (e) {
             console.error("Error reading database, resetting...", e);
-            return this.resetDb(defaultWatchPath);
+            return this.resetDb();
         }
     }
 
@@ -122,10 +155,9 @@ class LocalDatabase {
         }
     }
 
-    resetDb(defaultWatchPath) {
+    resetDb() {
         const defaultData = {
             devices: [new Device(uuidv4(), "Primary Desktop Workstation")],
-            watchFolder: defaultWatchPath,
             gallery: [],
             chats: []
         };
@@ -137,16 +169,16 @@ class LocalDatabase {
     getSettings() {
         const db = this.readDb();
         return {
-            watchFolder: db.watchFolder,
+            watchFolder: this.watchFolder,
             currentDeviceId: db.devices[0] ? db.devices[0].deviceId : ""
         };
     }
 
     setWatchFolder(newPath) {
-        const db = this.readDb();
-        db.watchFolder = newPath;
-        this.writeDb(db);
-        return newPath;
+        const absolutePath = path.resolve(newPath);
+        saveGlobalSettings({ watchFolder: absolutePath });
+        this.refreshActivePaths();
+        return absolutePath;
     }
 
 
@@ -280,5 +312,5 @@ class LocalDatabase {
 }
 
 // Export single instantiated instance of Database Manager (Singleton Pattern)
-const dbInstance = new LocalDatabase(DB_PATH);
+const dbInstance = new LocalDatabase();
 module.exports = dbInstance;
