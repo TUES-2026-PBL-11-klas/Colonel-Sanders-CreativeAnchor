@@ -47,13 +47,21 @@ function request(method, urlPath, body = null) {
 async function runTests() {
     console.log("=== STARTING BACKEND INTEGRATION TEST ===");
 
+    // Initialize watch folder to the local sync_folder to guarantee a clean, self-contained test environment
+    console.log("[PRE-TEST] Directing server to watch local sync_folder...");
+    const localSyncPath = path.join(__dirname, 'sync_folder');
+    await request('POST', '/api/settings/watch-folder', { watchFolder: localSyncPath });
+    
+    // Also sync the test runner's own local database singleton instance!
+    db.setWatchFolder(localSyncPath);
+
     // 1. Simulate user dropping a drawing file into the sync folder
     console.log("\n[TEST 1] Dropping image 'test_art.png' into sync folder...");
     fs.writeFileSync(testFilePath, Buffer.from(base64Png, 'base64'));
 
-    // Wait 2.5 seconds for Chokidar watcher and Jimp thumbnail generator to run
+    // Wait 12 seconds for Chokidar watcher and Jimp thumbnail generator to run
     console.log("Waiting for filesystem watcher...");
-    await new Promise(r => setTimeout(r, 2500));
+    await new Promise(r => setTimeout(r, 12000));
 
     // 2. Fetch the gallery list to verify it was automatically indexed
     console.log("\n[TEST 2] Fetching gallery list from /api/gallery...");
@@ -63,7 +71,10 @@ async function runTests() {
     if (gallery.length === 0) {
         throw new Error("Gallery is empty! Watcher did not index the file.");
     }
-    const entry = gallery[0];
+    const entry = gallery.find(item => item.fileName === 'test_art.png');
+    if (!entry) {
+        throw new Error("test_art.png was not found in the indexed gallery list!");
+    }
     console.log("SUCCESS: File automatically indexed with hash:", entry.fileHash);
     console.log("Thumbnail generated:", entry.thumbnailPath);
 
@@ -76,10 +87,15 @@ async function runTests() {
     // Manipulate updatedAt timestamp directly in DB to be 4 months in the past (120 days ago) for testing stagnant detection
     console.log("\n[TEST MANIPULATION] Modifying database record's updatedAt to be 120 days in the past...");
     const fourMonthsAgo = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString();
-    db.saveGalleryEntry({
-        id: entry.id,
-        updatedAt: fourMonthsAgo
-    });
+    const dbData = JSON.parse(fs.readFileSync(db.dbPath, 'utf-8'));
+    const entryInDb = dbData.gallery.find(item => item.id === entry.id || item.fileName === entry.fileName);
+    if (entryInDb) {
+        entryInDb.updatedAt = fourMonthsAgo;
+        fs.writeFileSync(db.dbPath, JSON.stringify(dbData, null, 2), 'utf-8');
+        console.log("Successfully backdated database entry updatedAt field.");
+    } else {
+        throw new Error("Could not find the entry in the database file to manipulate!");
+    }
 
     // 4. Test Anti-Burnout Reminder System
     console.log("\n[TEST 4] Triggering Anti-Burnout stagnation check...");
@@ -122,6 +138,9 @@ async function runTests() {
     // Clean up
     console.log("\nCleaning up test file...");
     fs.unlinkSync(testFilePath);
+    if (fs.existsSync(db.dbPath)) {
+        fs.unlinkSync(db.dbPath);
+    }
 }
 
 runTests().catch(err => {
