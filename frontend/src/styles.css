@@ -67,6 +67,47 @@ body.login-page {
     margin-bottom: 0;
 }
 
+.login-note a {
+    color: #4CAF50;
+    text-decoration: none;
+}
+
+.login-note a:hover {
+    text-decoration: underline;
+}
+
+.error-message {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 12px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    border: 1px solid #f5c6cb;
+    font-size: 14px;
+}
+
+.login-button {
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    width: 100%;
+    font-weight: bold;
+}
+
+.login-button:hover:not(:disabled) {
+    background-color: #45a049;
+}
+
+.login-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
 /* Dashboard Styles */
 .dashboard-container {
     max-width: 800px;
