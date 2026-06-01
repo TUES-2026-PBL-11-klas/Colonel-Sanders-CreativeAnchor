@@ -8,7 +8,9 @@
     "test": "node test_backend.js"
   },
   "dependencies": {
+    "ag-psd": "^30.1.1",
     "chokidar": "^3.6.0",
+    "clipstudio": "^0.1.1",
     "cors": "^2.8.5",
     "express": "^4.19.2",
     "jimp": "^0.22.12",

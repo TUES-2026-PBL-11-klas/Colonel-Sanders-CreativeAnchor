@@ -72,28 +72,73 @@ async function generateThumbnail(filePath, fileName) {
     try {
         if (ext === '.clip') {
             console.log(`[THUMB] Extracting embedded PNG preview from CLIP: ${fileName}`);
+            // Primary: Use clipstudio SQLite parser
+            try {
+                const { ClipStudio } = require('clipstudio');
+                const buf = fs.readFileSync(filePath);
+                const clip = await ClipStudio.load(buf);
+                const thumbnailBuf = clip.getThumbnail();
+                if (thumbnailBuf) {
+                    fs.writeFileSync(destPath, thumbnailBuf);
+                    return `thumbnails/${thumbName}`;
+                }
+            } catch (err) {
+                console.warn(`[THUMB] clipstudio extraction failed for ${fileName}, falling back to binary scanner:`, err.message);
+            }
+
+            // Fallback: Robust "Largest PNG Block" binary scanner
             const buf = fs.readFileSync(filePath);
             const pngHeader = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
             const pngTrailer = Buffer.from([0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82]);
-            
-            const headerIdx = buf.indexOf(pngHeader);
-            if (headerIdx !== -1) {
+
+            let largestPng = null;
+            let offset = 0;
+            while (true) {
+                const headerIdx = buf.indexOf(pngHeader, offset);
+                if (headerIdx === -1) break;
                 const trailerIdx = buf.indexOf(pngTrailer, headerIdx);
-                if (trailerIdx !== -1) {
-                    const pngBuf = buf.slice(headerIdx, trailerIdx + pngTrailer.length);
-                    // Write directly to final destination (zero Jimp resizing overhead)
-                    fs.writeFileSync(destPath, pngBuf);
+                if (trailerIdx === -1) {
+                    offset = headerIdx + pngHeader.length;
+                    continue;
+                }
+                const pngBuf = buf.slice(headerIdx, trailerIdx + pngTrailer.length);
+                if (!largestPng || pngBuf.length > largestPng.length) {
+                    largestPng = pngBuf;
+                }
+                offset = trailerIdx + pngTrailer.length;
+            }
+
+            if (largestPng) {
+                fs.writeFileSync(destPath, largestPng);
+                return `thumbnails/${thumbName}`;
+            }
+            console.warn(`[THUMB] Could not extract any valid PNG block from CLIP file: ${fileName}`);
+        } else if (ext === '.psd') {
+            console.log(`[THUMB] Extracting thumbnail from PSD: ${fileName}`);
+            // Primary: Use ag-psd to extract the pre-rendered JPEG thumbnail instantly without full layer parsing
+            try {
+                const { readPsd } = require('ag-psd');
+                const buf = fs.readFileSync(filePath);
+                const psd = readPsd(buf, { skipLayerImageData: true });
+                const thumbnail = psd.imageResources?.thumbnail;
+                if (thumbnail && thumbnail.data) {
+                    fs.writeFileSync(destPath, Buffer.from(thumbnail.data));
                     return `thumbnails/${thumbName}`;
                 }
+            } catch (err) {
+                console.warn(`[THUMB] ag-psd thumbnail extraction failed for ${fileName}:`, err.message);
             }
-        } else if (ext === '.psd') {
-            console.log(`[THUMB] Extracting flattened PNG from PSD: ${fileName}`);
-            const PSD = require('psd');
-            const psd = PSD.fromFile(filePath);
-            psd.parse();
-            // Save directly to final destination (zero Jimp resizing overhead)
-            await psd.image.saveAsPng(destPath);
-            return `thumbnails/${thumbName}`;
+
+            // Fallback: Legacy psd package canvas rendering
+            try {
+                const PSD = require('psd');
+                const psd = PSD.fromFile(filePath);
+                psd.parse();
+                await psd.image.saveAsPng(destPath);
+                return `thumbnails/${thumbName}`;
+            } catch (err) {
+                console.warn(`[THUMB] Legacy psd package failed as well for ${fileName}:`, err.message);
+            }
         } else {
             // Standard image file: resize using Jimp
             const image = await Jimp.read(filePath);
