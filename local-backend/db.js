@@ -52,7 +52,7 @@ class GalleryEntry {
         deviceOrigin,
         createdAt = new Date().toISOString(),
         updatedAt = new Date().toISOString(),
-        accessedAt = new Date().toISOString(),
+        accessedAt = null,
         thumbnailPath = ""
     }) {
         this.id = id;
@@ -242,7 +242,7 @@ class LocalDatabase {
                 deviceOrigin: entryData.deviceOrigin || (db.devices[0] ? db.devices[0].deviceId : uuidv4()),
                 createdAt: entryData.createdAt || new Date().toISOString(),
                 updatedAt: entryData.updatedAt || new Date().toISOString(),
-                accessedAt: entryData.accessedAt || new Date().toISOString(),
+                accessedAt: entryData.accessedAt || null,
                 thumbnailPath: entryData.thumbnailPath || ""
             });
             db.gallery.push(entry);
