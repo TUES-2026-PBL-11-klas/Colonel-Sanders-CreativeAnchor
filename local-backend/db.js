@@ -1,17 +1,45 @@
 // backend/db.js
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { v4: uuidv4 } = require('uuid');
 
-const SETTINGS_PATH = path.join(__dirname, 'global_settings.json');
+const SETTINGS_DIR = path.join(os.homedir(), '.creative-anchor');
+const SETTINGS_PATH = path.join(SETTINGS_DIR, 'global_settings.json');
 
 function getGlobalSettings() {
     const defaultWatchFolder = path.join(__dirname, 'sync_folder');
-    if (!fs.existsSync(SETTINGS_PATH)) {
-        const defaultSettings = { watchFolder: defaultWatchFolder };
-        fs.writeFileSync(SETTINGS_PATH, JSON.stringify(defaultSettings, null, 2), 'utf-8');
-        return defaultSettings;
+    const legacySettingsPath = path.join(__dirname, 'global_settings.json');
+
+    if (!fs.existsSync(SETTINGS_DIR)) {
+        try {
+            fs.mkdirSync(SETTINGS_DIR, { recursive: true });
+        } catch (e) {
+            console.error("Error creating settings directory:", e);
+        }
     }
+
+    if (!fs.existsSync(SETTINGS_PATH)) {
+        // Migration: check if legacy settings exist in the repository folder
+        let initialSettings = { watchFolder: defaultWatchFolder };
+        if (fs.existsSync(legacySettingsPath)) {
+            try {
+                const legacyContent = fs.readFileSync(legacySettingsPath, 'utf-8');
+                initialSettings = JSON.parse(legacyContent);
+                console.log("[SETTINGS] Migrated legacy global settings to home directory:", initialSettings.watchFolder);
+            } catch (e) {
+                console.error("Error migrating legacy settings:", e);
+            }
+        }
+
+        try {
+            fs.writeFileSync(SETTINGS_PATH, JSON.stringify(initialSettings, null, 2), 'utf-8');
+        } catch (e) {
+            console.error("Error creating default settings file:", e);
+        }
+        return initialSettings;
+    }
+
     try {
         const content = fs.readFileSync(SETTINGS_PATH, 'utf-8');
         return JSON.parse(content);
@@ -23,6 +51,9 @@ function getGlobalSettings() {
 
 function saveGlobalSettings(settings) {
     try {
+        if (!fs.existsSync(SETTINGS_DIR)) {
+            fs.mkdirSync(SETTINGS_DIR, { recursive: true });
+        }
         fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2), 'utf-8');
     } catch (e) {
         console.error("Error writing global settings:", e);
@@ -225,8 +256,9 @@ class LocalDatabase {
         if (index !== -1) {
             // Instantiate existing data using Model to perform OOP updates
             const model = new GalleryEntry(db.gallery[index]);
+            const existingUpdatedAt = model.updatedAt;
             Object.assign(model, entryData);
-            model.updatedAt = entryData.updatedAt || new Date().toISOString();
+            model.updatedAt = entryData.updatedAt || existingUpdatedAt || new Date().toISOString();
             
             entry = model;
             db.gallery[index] = model;
