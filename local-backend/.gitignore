@@ -4,3 +4,5 @@
 /thumbnails/*
 !/thumbnails/.gitkeep
 local_db.json
+global_settings.json
+clean_recovered.js

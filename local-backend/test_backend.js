@@ -47,6 +47,12 @@ function request(method, urlPath, body = null) {
 async function runTests() {
     console.log("=== STARTING BACKEND INTEGRATION TEST ===");
 
+    // Backup the current active watch folder path before the test overwrites it
+    console.log("[PRE-TEST] Backing up current settings...");
+    const originalSettings = await request('GET', '/api/settings');
+    const originalWatchFolder = originalSettings.watchFolder;
+    console.log(`Saved original watch folder: ${originalWatchFolder}`);
+
     // Initialize watch folder to the local sync_folder to guarantee a clean, self-contained test environment
     console.log("[PRE-TEST] Directing server to watch local sync_folder...");
     const localSyncPath = path.join(__dirname, 'sync_folder');
@@ -140,6 +146,12 @@ async function runTests() {
     fs.unlinkSync(testFilePath);
     if (fs.existsSync(db.dbPath)) {
         fs.unlinkSync(db.dbPath);
+    }
+
+    // Restore original settings
+    if (originalWatchFolder) {
+        console.log(`[POST-TEST] Restoring original watch folder settings to: ${originalWatchFolder}`);
+        await request('POST', '/api/settings/watch-folder', { watchFolder: originalWatchFolder });
     }
 }
 
