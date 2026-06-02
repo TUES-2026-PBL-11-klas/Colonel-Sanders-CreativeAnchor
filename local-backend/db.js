@@ -25,7 +25,12 @@ function getGlobalSettings() {
         if (fs.existsSync(legacySettingsPath)) {
             try {
                 const legacyContent = fs.readFileSync(legacySettingsPath, 'utf-8');
-                initialSettings = JSON.parse(legacyContent);
+                const legacyParsed = JSON.parse(legacyContent);
+                const legacyWatchFolder =
+                    typeof legacyParsed.watchFolder === 'string' && legacyParsed.watchFolder.trim()
+                        ? path.resolve(legacyParsed.watchFolder)
+                        : defaultWatchFolder;
+                initialSettings = { ...legacyParsed, watchFolder: legacyWatchFolder };
                 console.log("[SETTINGS] Migrated legacy global settings to home directory:", initialSettings.watchFolder);
             } catch (e) {
                 console.error("Error migrating legacy settings:", e);
