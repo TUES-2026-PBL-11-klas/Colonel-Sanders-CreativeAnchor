@@ -6,6 +6,7 @@ const db = require('./db'); // Require db directly to manipulate timestamps for 
 
 const base64Png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 const testFilePath = path.join(__dirname, 'sync_folder', 'test_art.png');
+let originalWatchFolder = null;
 
 // Helper to make HTTP requests
 function request(method, urlPath, body = null) {
@@ -46,6 +47,12 @@ function request(method, urlPath, body = null) {
 
 async function runTests() {
     console.log("=== STARTING BACKEND INTEGRATION TEST ===");
+
+    // Backup the current active watch folder path before the test overwrites it
+    console.log("[PRE-TEST] Backing up current settings...");
+    const originalSettings = await request('GET', '/api/settings');
+    originalWatchFolder = originalSettings.watchFolder;
+    console.log(`Saved original watch folder: ${originalWatchFolder}`);
 
     // Initialize watch folder to the local sync_folder to guarantee a clean, self-contained test environment
     console.log("[PRE-TEST] Directing server to watch local sync_folder...");
@@ -141,9 +148,23 @@ async function runTests() {
     if (fs.existsSync(db.dbPath)) {
         fs.unlinkSync(db.dbPath);
     }
+
+    // Restore original settings
+    if (originalWatchFolder) {
+        console.log(`[POST-TEST] Restoring original watch folder settings to: ${originalWatchFolder}`);
+        await request('POST', '/api/settings/watch-folder', { watchFolder: originalWatchFolder });
+    }
 }
 
-runTests().catch(err => {
+runTests().catch(async err => {
     console.error("Test failed:", err);
+    if (originalWatchFolder) {
+        console.log(`[POST-FAIL] Restoring original watch folder settings to: ${originalWatchFolder}`);
+        try {
+            await request('POST', '/api/settings/watch-folder', { watchFolder: originalWatchFolder });
+        } catch (restoreErr) {
+            console.error("Failed to restore original watch folder settings:", restoreErr);
+        }
+    }
     process.exit(1);
 });
