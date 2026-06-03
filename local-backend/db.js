@@ -89,7 +89,8 @@ class GalleryEntry {
         createdAt = new Date().toISOString(),
         updatedAt = new Date().toISOString(),
         accessedAt = null,
-        thumbnailPath = ""
+        thumbnailPath = "",
+        needsCritique = true
     }) {
         this.id = id;
         this.fileName = fileName;
@@ -102,6 +103,7 @@ class GalleryEntry {
         this.updatedAt = updatedAt;
         this.accessedAt = accessedAt;
         this.thumbnailPath = thumbnailPath;
+        this.needsCritique = needsCritique;
     }
 
     // Encapsulated Domain Methods
@@ -280,7 +282,8 @@ class LocalDatabase {
                 createdAt: entryData.createdAt || new Date().toISOString(),
                 updatedAt: entryData.updatedAt || new Date().toISOString(),
                 accessedAt: entryData.accessedAt || null,
-                thumbnailPath: entryData.thumbnailPath || ""
+                thumbnailPath: entryData.thumbnailPath || "",
+                needsCritique: entryData.needsCritique !== undefined ? entryData.needsCritique : true
             });
             db.gallery.push(entry);
         }

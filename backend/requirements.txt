@@ -12,5 +12,7 @@ bcrypt==5.0.0
 psycopg2-binary
 prometheus_flask_exporter
 requests
-supabase
+supabase==2.25.0
 websockets
+google-genai
+PyJWT
