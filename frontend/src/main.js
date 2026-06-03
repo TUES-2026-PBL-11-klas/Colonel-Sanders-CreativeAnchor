@@ -1,9 +1,16 @@
 // src/main.js
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 let mainWindow;
 
 function createWindow() {
-    mainWindow = new BrowserWindow({ width: 800, height: 600 });
+    mainWindow = new BrowserWindow({
+        width: 1280,
+        height: 720,
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false
+        }
+    });
 
     mainWindow.loadFile('src/login.html');
 
@@ -11,6 +18,25 @@ function createWindow() {
         mainWindow = null;
     });
 }
+
+// Window control events received from renderer process
+ipcMain.on('window-minimize', () => {
+    if (mainWindow) mainWindow.minimize();
+});
+
+ipcMain.on('window-maximize', () => {
+    if (mainWindow) {
+        if (mainWindow.isMaximized()) {
+            mainWindow.unmaximize();
+        } else {
+            mainWindow.maximize();
+        }
+    }
+});
+
+ipcMain.on('window-close', () => {
+    if (mainWindow) mainWindow.close();
+});
 
 app.on('ready', createWindow);
 
