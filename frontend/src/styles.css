@@ -59,23 +59,6 @@ body.login-page {
     box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
 }
 
-.login-note {
-    text-align: center;
-    color: #666;
-    font-size: 12px;
-    margin-top: 20px;
-    margin-bottom: 0;
-}
-
-.login-note a {
-    color: #4CAF50;
-    text-decoration: none;
-}
-
-.login-note a:hover {
-    text-decoration: underline;
-}
-
 .error-message {
     background-color: #f8d7da;
     color: #721c24;
@@ -86,26 +69,40 @@ body.login-page {
     font-size: 14px;
 }
 
-.login-button {
-    padding: 10px 20px;
-    font-size: 16px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
+.login-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background-color: #1A1917; /* Cocoa paper */
+    padding: 20px;
+}
+
+.login-container {
+    background-color: #22201D; /* Card Dark Paper */
+    border: 3px solid #3C3935;
+    border-radius: 6px;
     width: 100%;
-    font-weight: bold;
+    max-width: 420px;
+    padding: 40px;
+    box-shadow: 8px 8px 0px #131211; /* Strong brutalist flat shadow */
+    animation: loginFadeIn 0.35s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-.login-button:hover:not(:disabled) {
-    background-color: #45a049;
+@keyframes loginFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-.login-button:disabled {
-    background-color: #cccccc;
-    cursor: not-allowed;
+/* Custom completely-hidden state when no drawing is active */
+.workspace-right-chat.completely-hidden {
+    display: none !important;
 }
 
 /* Dashboard Styles */
@@ -181,4 +178,25 @@ hr {
     border: none;
     border-top: 1px solid #ddd;
     margin: 20px 0;
+}
+
+.brand-section {
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
+.brand-title {
+    font-size: 24px;
+    letter-spacing: -0.5px;
+    color: #F5F2EB;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.brand-dot {
+    width: 10px;
+    height: 10px;
+    background-color: #FF6200;
+    border: 2px solid #F5F2EB;
 }

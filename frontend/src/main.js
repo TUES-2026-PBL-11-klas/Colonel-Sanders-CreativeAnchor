@@ -1,23 +1,15 @@
 // src/main.js
-const path = require('path');
 const { app, BrowserWindow, ipcMain } = require('electron');
-const Store = require('electron-store').default;
-const store = new Store();
-
-// Disable GPU acceleration to fix Windows compatibility issues
-app.disableHardwareAcceleration();
-
 let mainWindow;
 
 function createWindow() {
     mainWindow = new BrowserWindow({
-        width: 800,
-        height: 600,
+        width: 1280,
+        height: 720,
         webPreferences: {
-            preload: require('path').join(__dirname, 'preload.js'),
-            nodeIntegration: false,
-            contextIsolation: true,
-        },
+            nodeIntegration: true,
+            contextIsolation: false
+        }
     });
 
     mainWindow.loadFile('src/login.html');
@@ -27,20 +19,23 @@ function createWindow() {
     });
 }
 
-ipcMain.handle('store:get', (_event, key) => {
-    return store.get(key);
+// Window control events received from renderer process
+ipcMain.on('window-minimize', () => {
+    if (mainWindow) mainWindow.minimize();
 });
 
-ipcMain.handle('store:set', (_event, key, value) => {
-    store.set(key, value);
+ipcMain.on('window-maximize', () => {
+    if (mainWindow) {
+        if (mainWindow.isMaximized()) {
+            mainWindow.unmaximize();
+        } else {
+            mainWindow.maximize();
+        }
+    }
 });
 
-ipcMain.handle('store:delete', (_event, key) => {
-    store.delete(key);
-});
-
-ipcMain.handle('navigate', (_event, page) => {
-    mainWindow.loadFile(`src/${page}`);
+ipcMain.on('window-close', () => {
+    if (mainWindow) mainWindow.close();
 });
 
 app.on('ready', createWindow);
