@@ -185,6 +185,8 @@ function initFolderWatcher(watchPath) {
         const stats = fs.statSync(filePath);
         const fileHash = getFileHash(filePath);
 
+        const existingThumbExists = existing && existing.thumbnailPath && fs.existsSync(path.resolve(__dirname, existing.thumbnailPath));
+
         if (!existing) {
             const thumbnailPath = await generateThumbnail(filePath, fileName);
             db.saveGalleryEntry({
@@ -203,7 +205,7 @@ function initFolderWatcher(watchPath) {
                 thumbnailPath: thumbnailPath
             });
             console.log(`[WATCH] Registered new gallery entry for: ${fileName}`);
-        } else if (existing.fileHash !== fileHash || !existing.thumbnailPath) {
+        } else if (existing.fileHash !== fileHash || !existingThumbExists) {
             const thumbnailPath = await generateThumbnail(filePath, fileName);
             db.saveGalleryEntry({
                 id: existing.id,
@@ -216,7 +218,7 @@ function initFolderWatcher(watchPath) {
                     sizeBytes: stats.size
                 }
             });
-            console.log(`[WATCH] Updated file contents and hash for: ${fileName}`);
+            console.log(`[WATCH] Updated file contents, hash, or generated missing thumbnail for: ${fileName}`);
         }
     });
 
@@ -241,8 +243,10 @@ function initFolderWatcher(watchPath) {
                 metadata: {
                     ...existing.metadata,
                     sizeBytes: stats.size
-                }
+                },
+                needsCritique: true // Flag that we need to trigger AI critique on next open/access click
             });
+            console.log(`[WATCH] File saved: "${fileName}". Set needsCritique: true.`);
         }
     });
 
@@ -265,6 +269,72 @@ function initFolderWatcher(watchPath) {
 
 // Start watching current path
 initFolderWatcher(currentSyncDir);
+
+// Helper to read initial prompt from file
+function getInitialPrompt() {
+    const promptPath = path.join(__dirname, 'initial_prompt.txt');
+    try {
+        if (fs.existsSync(promptPath)) {
+            return fs.readFileSync(promptPath, 'utf-8');
+        }
+    } catch (e) {
+        console.error("Error reading initial_prompt.txt:", e);
+    }
+    return "Analyze my drawing and give me feedback.";
+}
+
+// Helper to upload thumbnail and call Flask AI chat endpoint
+async function sendToHostedBackend(thumbnailRelativePath) {
+    if (!thumbnailRelativePath) {
+        throw new Error("No thumbnail path provided");
+    }
+    const absoluteThumbPath = path.resolve(__dirname, thumbnailRelativePath);
+    if (!fs.existsSync(absoluteThumbPath)) {
+        throw new Error(`Thumbnail file not found at: ${absoluteThumbPath}`);
+    }
+
+    console.log(`[AI BRIDGE] Uploading thumbnail to hosted backend: ${absoluteThumbPath}`);
+    const fileBuffer = fs.readFileSync(absoluteThumbPath);
+    const blob = new Blob([fileBuffer], { type: 'image/png' });
+    const formData = new FormData();
+    formData.append('image', blob, path.basename(absoluteThumbPath));
+
+    // 1. Post image to hosted backend
+    const uploadRes = await fetch('http://localhost:5001/images', {
+        method: 'POST',
+        body: formData
+    });
+
+    if (!uploadRes.ok) {
+        const errorText = await uploadRes.text();
+        throw new Error(`Failed to upload image: ${uploadRes.statusText} - ${errorText}`);
+    }
+
+    const uploadData = await uploadRes.json();
+    const imageUuid = uploadData.file_uuid;
+    console.log(`[AI BRIDGE] Image uploaded. UUID: ${imageUuid}`);
+
+    // 2. Request chat response from hosted backend
+    console.log(`[AI BRIDGE] Requesting AI critique for UUID: ${imageUuid}`);
+    const chatRes = await fetch('http://localhost:5001/chat', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            image_uuid: imageUuid
+        })
+    });
+
+    if (!chatRes.ok) {
+        const errorText = await chatRes.text();
+        throw new Error(`Failed to get critique: ${chatRes.statusText} - ${errorText}`);
+    }
+
+    const chatData = await chatRes.json();
+    console.log(`[AI BRIDGE] AI Response received:`, chatData.text);
+    return chatData.text;
+}
 
 // ----------------------------------------------------
 // REST API ENDPOINTS
@@ -346,13 +416,53 @@ app.get('/api/gallery', (req, res) => {
     res.json(db.getGallery());
 });
 
+// Local in-memory lock object to prevent concurrent API double-triggering
+const activeCritiques = {};
+
 // 4. Update drawing metrics (Accessed / Time spent)
-app.post('/api/gallery/:id/access', (req, res) => {
+app.post('/api/gallery/:id/access', async (req, res) => {
     const { id } = req.params;
     const entry = db.getGalleryEntry(id);
     if (!entry) {
         return res.status(404).json({ success: false, error: 'Gallery entry not found' });
     }
+
+    const chat = db.getChatByGalleryEntry(id);
+    // Needs critique if chat is empty OR if it has been marked as needing critique since the last save
+    const shouldCritique = (chat.history.length === 0 || entry.needsCritique === true) && entry.thumbnailPath;
+
+    // Concurrency check: if already running, skip
+    if (shouldCritique && !activeCritiques[id]) {
+        console.log(`[AI BRIDGE] First open after save detected for "${entry.fileName}". Triggering AI critique.`);
+        
+        // 1. Immediately flag as false in the database to prevent duplicate requests
+        db.saveGalleryEntry({
+            id: id,
+            needsCritique: false
+        });
+
+        // 2. Set memory lock and trigger async execution without awaiting (so we don't block the endpoint response)
+        activeCritiques[id] = true;
+        (async () => {
+            try {
+                const initialPrompt = getInitialPrompt();
+                const critique = await sendToHostedBackend(entry.thumbnailPath);
+
+                db.addMessageToChat(id, "gemini", critique);
+                console.log(`[AI BRIDGE] Critique successfully added to chat history for "${entry.fileName}".`);
+            } catch (error) {
+                console.error(`[AI BRIDGE] Error during critique for ${entry.fileName}:`, error.message);
+                // Restore needsCritique to true so it can retry on next click
+                db.saveGalleryEntry({
+                    id: id,
+                    needsCritique: true
+                });
+            } finally {
+                delete activeCritiques[id];
+            }
+        })();
+    }
+
     const updated = db.saveGalleryEntry({
         id: id,
         accessedAt: new Date().toISOString()
