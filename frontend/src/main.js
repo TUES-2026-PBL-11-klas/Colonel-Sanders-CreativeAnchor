@@ -1,5 +1,6 @@
 // src/main.js
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const path = require('path');
 let mainWindow;
 
 function createWindow() {
@@ -8,7 +9,8 @@ function createWindow() {
         height: 720,
         webPreferences: {
             nodeIntegration: true,
-            contextIsolation: false
+            contextIsolation: true,
+            preload: path.join(__dirname, 'preload.js')
         },
         autoHideMenuBar: true,
     });
@@ -19,6 +21,16 @@ function createWindow() {
         mainWindow = null;
     });
 }
+
+// Handle folder dialog
+ipcMain.handle('open-folder-dialog', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openDirectory'],
+        title: 'Select Workspace Folder',
+        message: 'Choose the folder containing your digital paint projects'
+    });
+    return result.filePaths.length > 0 ? result.filePaths[0] : null;
+});
 
 // Window control events received from renderer process
 ipcMain.on('window-minimize', () => {

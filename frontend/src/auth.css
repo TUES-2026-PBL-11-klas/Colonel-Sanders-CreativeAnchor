@@ -49,24 +49,3 @@
     background-color: #FF6200;
     border: 2px solid #F5F2EB;
 }
-
-
-.config-input {
-    width: 100%;
-    padding: 12px;
-    font-family: inherit;
-    font-size: 14px;
-    border: 2.5px solid #3C3935;
-    background-color: #1A1917;
-    color: #EAE6DF;
-    outline: none;
-    border-radius: 4px;
-    box-shadow: 2px 2px 0px #131211;
-    transition: all 0.1s ease;
-    margin-bottom: 12px;
-}
-
-.config-input:focus {
-    border-color: #FF6200;
-    box-shadow: 3px 3px 0px #3C3935;
-}

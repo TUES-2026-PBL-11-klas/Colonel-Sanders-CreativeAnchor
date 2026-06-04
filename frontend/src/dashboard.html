@@ -12,7 +12,7 @@
     <div class="app-main-layout">
     
     <!-- Left Settings Panel (Collapsible - starts collapsed) -->
-    <aside id="sidebarPanel" class="dashboard-sidebar expanded">
+    <aside id="sidebarPanel" class="dashboard-sidebar collapsed">
         <!-- Toggle button ONLY visible when collapsed -->
         <button onclick="toggleLeftSidebar()" class="dock-toggle-btn sidebar-collapsed-toggle" title="Toggle Settings">
             <div class="sidebar-icon-shape"></div>
@@ -41,7 +41,7 @@
                     <!-- Styled Folder Card Label -->
                     <div class="folder-label-card">
                         <span style="font-size: 11px; font-weight: 700; color: #A59E92; text-transform: uppercase;">Current Directory</span>
-                        <span id="currentWatchFolderLabel" class="folder-path-text">C:\Users\kaloy\Documents\Drawings</span>
+                        <span id="currentWatchFolderLabel" class="folder-path-text">...</span>
                     </div>
                     
                     <button onclick="openChangeFolderModal()" class="block-btn" style="margin-bottom: 25px; width: 100%;">
@@ -120,16 +120,23 @@
             </header>
             <div class="modal-body">
                 <p style="font-size: 13.5px; color: #A59E92; line-height: 1.4; margin-bottom: 20px;">
-                    Provide the absolute directory path on your PC containing your digital paint projects (we monitor .clip, .psd, .kra, .sai and standard images).
+                    Select the folder on your PC containing your digital paint projects (we monitor standard images as well as .clip, .psd, .kra, .sai).
                 </p>
-                <span class="config-label">ABSOLUTE DIRECTORY PATH</span>
-                <input type="text" id="modalWatchFolderInput" class="config-input" placeholder="e.g. C:\Users\kaloy\Documents\Drawings">
+                <span class="config-label">WORKSPACE FOLDER</span>
+                <div style="margin-bottom: 15px;">
+                    <button onclick="openFolderDialog()" class="block-btn" style="width: 100%; margin-bottom: 10px;">
+                        Browse Folder
+                    </button>
+                    <div id="selectedFolderPath" style="padding: 10px; background-color: #2A2622; border: 1px solid #3A3632; border-radius: 4px; color: #A59E92; font-size: 12px; word-break: break-all; min-height: 40px; display: flex; align-items: center;">
+                        <span id="selectedFolderText">No folder selected</span>
+                    </div>
+                </div>
             </div>
             <footer class="modal-footer">
                 <button onclick="closeChangeFolderModal()" class="block-btn block-btn-secondary" style="width: auto; padding: 10px 20px;">
                     Cancel
                 </button>
-                <button onclick="saveModalWatchFolderSettings()" class="block-btn" style="width: auto; padding: 10px 25px;">
+                <button onclick="saveModalWatchFolderSettings()" class="block-btn" style="width: auto; padding: 10px 25px;" id="confirmScanBtn" disabled>
                     Confirm & Scan
                 </button>
             </footer>
