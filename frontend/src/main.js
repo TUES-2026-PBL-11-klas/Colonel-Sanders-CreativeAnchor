@@ -9,7 +9,8 @@ function createWindow() {
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false
-        }
+        },
+        autoHideMenuBar: true,
     });
 
     mainWindow.loadFile('src/login.html');

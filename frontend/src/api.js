@@ -1,7 +1,7 @@
 // src/api.js
 
 // ── Base URL construction ─────────────────────────────────────────────────────
-const API_BASE_URL = 'http://10.178.13.66:5000/';
+const API_BASE_URL = 'http://localhost:5000/';
 
 // ── Token storage IPC helpers ─────────────────────────────────────────────────
 const getAccessToken = () =>

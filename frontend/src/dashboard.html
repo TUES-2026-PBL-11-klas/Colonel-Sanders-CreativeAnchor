@@ -3,22 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Creative Anchor</title>
+    <title>Creative Anchor Dashboard</title>
     <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-    <div class="dashboard-container">
-        <header class="dashboard-header">
-            <h1>Creative Anchor</h1>
-            <button onclick="handleLogout()" class="logout-button">Logout</button>
-        </header>
-        <hr>
-        <div class="upload-section">
-            <input type="file" id="imageInput" accept="image/*">
-            <button onclick="uploadImage()">Upload</button>
+<body style="display: flex; flex-direction: column; min-height: 100vh; margin: 0; background-color: #1A1917;">
+
+    <!-- Main Desktop Layout Wrapper -->
+    <div class="app-main-layout">
+    
+    <!-- Left Settings Panel (Collapsible - starts collapsed) -->
+    <aside id="sidebarPanel" class="dashboard-sidebar expanded">
+        <!-- Toggle button ONLY visible when collapsed -->
+        <button onclick="toggleLeftSidebar()" class="dock-toggle-btn sidebar-collapsed-toggle" title="Toggle Settings">
+            <div class="sidebar-icon-shape"></div>
+        </button>
+
+        <!-- Expanded content wrapper -->
+        <div class="sidebar-expanded-content" style="display: flex; flex-direction: column; height: 100%; justify-content: space-between; width: 100%;">
+            <div class="sidebar-top">
+                <div class="sidebar-expanded-header">
+                    <div class="brand-section">
+                        <h1 class="brand-title">
+                            <span class="brand-dot"></span>
+                            Creative Anchor
+                        </h1>
+                    </div>
+                    <!-- Toggler inside expanded sidebar -->
+                    <button onclick="toggleLeftSidebar()" class="dock-toggle-btn" title="Close Settings">
+                        <div class="sidebar-icon-shape"></div>
+                    </button>
+                </div>
+
+                <!-- Custom Watch Folder Configurator -->
+                <div class="config-section">
+                    <span class="config-label">WORKSPACE FOLDER</span>
+                    
+                    <!-- Styled Folder Card Label -->
+                    <div class="folder-label-card">
+                        <span style="font-size: 11px; font-weight: 700; color: #A59E92; text-transform: uppercase;">Current Directory</span>
+                        <span id="currentWatchFolderLabel" class="folder-path-text">C:\Users\kaloy\Documents\Drawings</span>
+                    </div>
+                    
+                    <button onclick="openChangeFolderModal()" class="block-btn" style="margin-bottom: 25px; width: 100%;">
+                        Change Workspace
+                    </button>
+
+                    <!-- Trigger Sync/Check manually -->
+                    <button onclick="triggerManualBurnoutCheck()" class="block-btn block-btn-secondary" style="margin-bottom: 10px; width: 100%;">
+                        Check Stagnation
+                    </button>
+                </div>
+
+                <!-- Active Device Status Widget -->
+                <div class="device-widget">
+                    <h4 class="device-widget-title">Active Client Device</h4>
+                    <div id="deviceWidgetName" style="font-size: 13px; font-weight: 700; margin-bottom: 4px;">Desktop Workstation</div>
+                    <div id="deviceWidgetId" class="device-widget-id">...</div>
+                </div>
+            </div>
+
+            <!-- User Profile & Logout -->
+            <div class="user-panel">
+                <div class="user-meta" style="margin-bottom: 15px;">
+                    <div class="user-avatar" id="userAvatar">A</div>
+                    <div class="user-details">
+                        <span class="user-name" id="userName">Artist</span>
+                        <span class="user-email" id="userEmail">artist@creativeanchor.com</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Avatar Button ONLY visible when collapsed -->
+        <button onclick="toggleLeftSidebar()" class="dock-avatar-btn sidebar-collapsed-avatar" id="dockAvatar">A</button>
+    </aside>
+
+    <!-- Main Dynamic Workspace Pane Container (Zero Dynamic Paddings) -->
+    <div class="workspace-pane-container">
+        
+        <!-- Left Pane: Alerts & Card Grid Explorer -->
+        <main id="galleryPane" class="workspace-left-gallery">
+            <header class="main-header">
+                <div class="main-header-info">
+                    <h2>Drawing Canvas Grid</h2>
+                    <p>Watching your active workspace for physical edits, time investments, and burnout signals.</p>
+                </div>
+            </header>
+
+            <!-- Burnout Stagnant Alarm Alert Banner -->
+            <div id="burnoutAlertBanner" class="burnout-alert-banner" style="display: none;">
+                <div class="burnout-alert-icon">ALERT:</div>
+                <div class="burnout-alert-text">
+                    <h4>STAGNATION ALARM DETECTED</h4>
+                    <p id="burnoutAlertMessage">...</p>
+                </div>
+            </div>
+
+            <!-- Art Cards Grid Explorer -->
+            <div id="galleryGrid" class="gallery-grid">
+                <div style="grid-column: 1 / -1; padding: 40px; text-align: center; color: #8C877E;">
+                    <p style="font-size: 16px; font-weight: 600;">No drawings detected yet.</p>
+                    <p style="font-size: 13.5px; margin-top: 8px;">Drag and drop files into your directory or click 'Change Workspace'.</p>
+                </div>
+            </div>
+        </main>
+
+    </div>
+    </div> <!-- Close .app-main-layout -->
+
+    <!-- NEO-BRUTALIST CHANGE FOLDER POPUP MODAL -->
+    <div id="changeFolderModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <header class="modal-header">
+                <h3 class="brand-serif" style="font-size: 18px; color: #F5F2EB;">Configure Workspace Folder</h3>
+                <button onclick="closeChangeFolderModal()" class="modal-close">&times;</button>
+            </header>
+            <div class="modal-body">
+                <p style="font-size: 13.5px; color: #A59E92; line-height: 1.4; margin-bottom: 20px;">
+                    Provide the absolute directory path on your PC containing your digital paint projects (we monitor .clip, .psd, .kra, .sai and standard images).
+                </p>
+                <span class="config-label">ABSOLUTE DIRECTORY PATH</span>
+                <input type="text" id="modalWatchFolderInput" class="config-input" placeholder="e.g. C:\Users\kaloy\Documents\Drawings">
+            </div>
+            <footer class="modal-footer">
+                <button onclick="closeChangeFolderModal()" class="block-btn block-btn-secondary" style="width: auto; padding: 10px 20px;">
+                    Cancel
+                </button>
+                <button onclick="saveModalWatchFolderSettings()" class="block-btn" style="width: auto; padding: 10px 25px;">
+                    Confirm & Scan
+                </button>
+            </footer>
         </div>
     </div>
 
+    <!-- Active Global State / Scripts -->
     <script src="upload.js"></script>
     <script src="app.js"></script>
 </body>
