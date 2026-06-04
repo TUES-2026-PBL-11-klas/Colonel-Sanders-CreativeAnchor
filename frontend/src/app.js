@@ -1,4 +1,4 @@
-// src/app.js – Authentication UI handlers (Electron Renderer Process)
+// src/app.js
 
 import { API, clearTokens, getAccessToken } from './api.js';
 
@@ -8,17 +8,17 @@ const store = {
     delete: (key)     => window.electronAPI.store.delete(key),
 };
 
-// ── Navigation ────────────────────────────────────────────────────────────────
+// Navigation helper
 function navigateTo(page) {
     window.electronAPI.navigate(page);
 }
 
-// ── Input validation ──────────────────────────────────────────────────────────
+// Input validation
 function isValidEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-// ── Login ─────────────────────────────────────────────────────────────────────
+// Login
 async function handleLogin(event) {
     event.preventDefault();
 
@@ -69,7 +69,7 @@ async function handleLogin(event) {
     }
 }
 
-// ── Register ──────────────────────────────────────────────────────────────────
+// Register
 async function handleRegister(event) {
     event.preventDefault();
 
@@ -130,19 +130,7 @@ async function handleRegister(event) {
     }
 }
 
-// ── Logout ────────────────────────────────────────────────────────────────────
-async function handleLogout() {
-    // Tell the server to invalidate the token (fire-and-forget)
-    try { await API.logout(); } catch { /* swallow – local logout still proceeds */ }
-
-    await clearTokens();
-    await store.delete('userId');
-    await store.delete('userEmail');
-
-    navigateTo('login.html');
-}
-
-// ── Route guard ───────────────────────────────────────────────────────────────
+// Route guard
 async function checkLoginStatus() {
     const currentPage    = window.location.pathname.split('/').pop();
     const isLoggedIn     = Boolean(await getAccessToken());

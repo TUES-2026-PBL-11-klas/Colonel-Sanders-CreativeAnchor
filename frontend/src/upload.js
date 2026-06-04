@@ -9,6 +9,7 @@ let drawings = [];
 
 // Panel Toggle states
 let sidebarCollapsed = true; // start collapsed as default
+let chatCollapsed = true;    // start collapsed as default
 
 // 1. Initial configuration load on startup
 async function loadSettings() {
@@ -112,6 +113,16 @@ function toggleLeftSidebar() {
     }
 }
 
+function toggleRightChat() {
+    const chat = document.getElementById('chatPanel');
+    chatCollapsed = !chatCollapsed;
+
+    if (chatCollapsed) {
+        chat.classList.add('collapsed');
+    } else {
+        chat.classList.remove('collapsed');
+    }
+}
 
 // 4. Render files list dynamically in a grid of Neo-Brutalist cards
 async function refreshGallery() {
@@ -255,9 +266,16 @@ function renderGalleryGrid() {
     });
 }
 
+// 5. Click a drawing card to inspect details, update access timestamp, and load chat logs
 async function selectDrawingCard(id) {
     activeDrawingId = id;
     renderGalleryGrid(); // redraw selected border
+
+    // Ensure right chat panel is revealed from its startup hidden state
+    const chatPanel = document.getElementById('chatPanel');
+    if (chatPanel) {
+        chatPanel.classList.remove('completely-hidden');
+    }
 
     try {
         // Trigger access update on backend
@@ -273,11 +291,101 @@ async function selectDrawingCard(id) {
 
         const file = drawings.find(d => d.id === id);
 
+        // Load Chat logs for this drawing file
+        const chatRes = await fetch(`${API_URL}/api/gallery/${id}/chat`);
+        const chatData = await chatRes.json();
+
+        // Update headers (No Emojis!)
+        document.getElementById('chatHeaderTitle').innerText = file.fileName;
+        document.getElementById('chatHeaderSub').innerText = `Invested effort: ${file.hoursSpent.toFixed(1)} hours | Status: ${file.status}`;
         
         // Show controls
         document.getElementById('cloudSyncBtn').style.display = 'block';
+        document.getElementById('chatComposer').style.display = 'flex';
+
+        // Render chat history
+        renderChatHistory(chatData.history);
+
+        // If chat panel was collapsed, automatically expand it to show the history! Excellent UX!
+        if (chatCollapsed) {
+            toggleRightChat();
+        }
     } catch (e) {
         console.error("Failed to select drawing:", e);
+    }
+}
+
+// 6. Render local chat cache (No Emojis!)
+function renderChatHistory(messages) {
+    const thread = document.getElementById('chatHistory');
+    thread.innerHTML = '';
+
+    if (!messages || messages.length === 0) {
+        thread.innerHTML = `
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #8C877E; padding: 20px;">
+                <h4 style="font-weight: 700; margin-bottom: 4px;">Local Chat Cache is Empty</h4>
+                <p style="font-size: 12.5px; line-height: 1.4; max-width: 250px;">Ask Gemini to review your composition or anatomy structured details.</p>
+            </div>
+        `;
+        return;
+    }
+
+    messages.forEach(msg => {
+        const bubble = document.createElement('div');
+        bubble.className = `message-bubble ${msg.sender}`;
+        
+        const authorName = msg.sender === 'gemini' ? 'Gemini Critique' : 'Me';
+        bubble.innerHTML = `
+            <div class="message-author ${msg.sender}">${authorName}</div>
+            <div style="white-space: pre-wrap; font-size: 13px; line-height: 1.5;">${msg.message}</div>
+        `;
+        thread.appendChild(bubble);
+    });
+
+    // Auto-scroll chat to bottom
+    thread.scrollTop = thread.scrollHeight;
+}
+
+// 7. Handle sending message and receiving mock Gemini artist critique
+async function handleSendChatMessage(event) {
+    event.preventDefault();
+    if (!activeDrawingId) return;
+
+    const input = document.getElementById('chatInput');
+    const prompt = input.value.trim();
+    if (!prompt) return;
+
+    input.value = '';
+    
+    try {
+        // Optimistically render user message
+        const thread = document.getElementById('chatHistory');
+        const userBubble = document.createElement('div');
+        userBubble.className = 'message-bubble user';
+        userBubble.innerHTML = `
+            <div class="message-author user">Me</div>
+            <div style="white-space: pre-wrap; font-size: 13px;">${prompt}</div>
+        `;
+        thread.appendChild(userBubble);
+        thread.scrollTop = thread.scrollHeight;
+
+        // Call mock Gemini analysis endpoint
+        const res = await fetch(`${API_URL}/api/gallery/${activeDrawingId}/review`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ customPrompt: prompt })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            // Load fresh chat history
+            const chatRes = await fetch(`${API_URL}/api/gallery/${activeDrawingId}/chat`);
+            const chatData = await chatRes.json();
+            renderChatHistory(chatData.history);
+        }
+    } catch (e) {
+        console.error("Failed to get review from mock Gemini:", e);
+        alert("Critique connection error. Make sure your local server is running!");
     }
 }
 

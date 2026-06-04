@@ -110,7 +110,7 @@ body {
 h1, h2, h3, .brand-serif {
     font-family: 'Lora', Georgia, serif;
     font-weight: 700;
-    color: #F5F2EB;
+    color: #F5F2EB; /* Bright Warm Ivory */
 }
 
 /* ----------------------------------------------------
@@ -206,15 +206,16 @@ h1, h2, h3, .brand-serif {
 }
 
 .dock-toggle-btn:hover .sidebar-icon-shape,
-.dock-toggle-btn:hover {
+.dock-toggle-btn:hover .chat-icon-shape {
     border-color: #FF6200;
 }
 
 .dock-toggle-btn:hover .sidebar-icon-shape::after,
-.dock-toggle-btn:hover {
+.dock-toggle-btn:hover .chat-icon-shape::after {
     background-color: #FF6200;
 }
 
+/* CSS Vector Shapes replicating NotebookLM */
 .sidebar-icon-shape {
     width: 18px;
     height: 18px;
@@ -230,6 +231,26 @@ h1, h2, h3, .brand-serif {
     top: 0;
     bottom: 0;
     left: 4px;
+    width: 2px;
+    background-color: #A59E92;
+    transition: background-color 0.15s ease;
+}
+
+.chat-icon-shape {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #A59E92;
+    border-radius: 2px;
+    position: relative;
+    transition: border-color 0.15s ease;
+}
+
+.chat-icon-shape::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 4px;
     width: 2px;
     background-color: #A59E92;
     transition: background-color 0.15s ease;
@@ -264,6 +285,50 @@ h1, h2, h3, .brand-serif {
     border-color: #FF6200;
     color: #FF6200;
     box-shadow: 0px 0px 8px rgba(255, 98, 0, 0.3);
+}
+
+/* Custom Chat Paper Plane Button */
+.dock-chat-btn {
+    width: 36px;
+    height: 36px;
+    background-color: #FF6200; /* Glowing Orange */
+    color: #FFFFFF; /* White Vector SVG Icon */
+    border: 2.5px solid #3C3935;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 4px; /* Blocky border radius matching profile avatar */
+    box-shadow: 2px 2px 0px #131211;
+    transition: all 0.15s cubic-bezier(0.25, 1, 0.5, 1);
+    outline: none;
+}
+
+.dock-chat-btn:hover {
+    transform: scale(1.05);
+    border-color: #FF6200;
+    box-shadow: 0px 0px 8px rgba(255, 98, 0, 0.4);
+}
+
+.brand-section {
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
+.brand-title {
+    font-size: 24px;
+    letter-spacing: -0.5px;
+    color: #F5F2EB;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.brand-dot {
+    width: 10px;
+    height: 10px;
+    background-color: #FF6200;
+    border: 2px solid #F5F2EB;
 }
 
 .config-section {
@@ -306,6 +371,26 @@ h1, h2, h3, .brand-serif {
     color: #FF6200;
 }
 
+.config-input {
+    width: 100%;
+    padding: 12px;
+    font-family: inherit;
+    font-size: 14px;
+    border: 2.5px solid #3C3935;
+    background-color: #1A1917;
+    color: #EAE6DF;
+    outline: none;
+    border-radius: 4px;
+    box-shadow: 2px 2px 0px #131211;
+    transition: all 0.1s ease;
+    margin-bottom: 12px;
+}
+
+.config-input:focus {
+    border-color: #FF6200;
+    box-shadow: 3px 3px 0px #3C3935;
+}
+
 .block-btn {
     padding: 12px;
     font-family: inherit;
@@ -343,26 +428,6 @@ h1, h2, h3, .brand-serif {
 
 .block-btn-secondary:hover {
     background-color: #2D2A26;
-}
-
-.config-input {
-    width: 100%;
-    padding: 12px;
-    font-family: inherit;
-    font-size: 14px;
-    border: 2.5px solid #3C3935;
-    background-color: #1A1917;
-    color: #EAE6DF;
-    outline: none;
-    border-radius: 4px;
-    box-shadow: 2px 2px 0px #131211;
-    transition: all 0.1s ease;
-    margin-bottom: 12px;
-}
-
-.config-input:focus {
-    border-color: #FF6200;
-    box-shadow: 3px 3px 0px #3C3935;
 }
 
 .device-widget {
@@ -677,9 +742,159 @@ h1, h2, h3, .brand-serif {
 }
 
 .art-card-meta-val {
-    font-size: 10px;
+    font-size: 11.5px;
     font-weight: 700;
     color: #EAE6DF;
+}
+
+/* ----------------------------------------------------
+   RIGHT EXPANDABLE CHAT PANE
+   ---------------------------------------------------- */
+/* ----------------------------------------------------
+   RIGHT EXPANDABLE CHAT PANE
+   ---------------------------------------------------- */
+.workspace-right-chat {
+    width: 380px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: #1A1917; /* Warm dark paper */
+    border-left: 2px solid #3C3935;
+    transition: width 0.4s cubic-bezier(0.25, 1, 0.5, 1), 
+                padding 0.4s cubic-bezier(0.25, 1, 0.5, 1),
+                background-color 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    overflow: hidden;
+    justify-content: space-between;
+    z-index: 15;
+    position: relative;
+}
+
+.workspace-right-chat.collapsed {
+    width: 60px;
+    padding: 25px 0;
+    align-items: center;
+    background-color: #131211; /* Uniform docked color when collapsed */
+}
+
+/* Expanded content wrapper - animated opacity & visibility to avoid choppy display snaps */
+.chat-expanded-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    min-width: 340px; /* Lock structural width during collapse */
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.25s cubic-bezier(0.25, 1, 0.5, 1),
+                visibility 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.workspace-right-chat.collapsed .chat-expanded-content {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    position: absolute; /* Remove from flex flow to allow clean centering of collapsed elements */
+}
+
+/* Hide/show elements based on right chat collapse state */
+.chat-collapsed-toggle,
+.chat-collapsed-txt-btn {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    position: absolute;
+    transition: opacity 0.25s cubic-bezier(0.25, 1, 0.5, 1),
+                visibility 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.workspace-right-chat.collapsed .chat-collapsed-toggle,
+.workspace-right-chat.collapsed .chat-collapsed-txt-btn {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    position: relative; /* Re-engage in flex flow for automatic vertical spacing */
+}
+
+/* Brutalist Art Chat Panel */
+.chat-header {
+    padding: 20px;
+    border-bottom: 3px solid #3C3935;
+    background-color: #131211;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    white-space: nowrap;
+    gap: 15px;
+}
+
+.chat-header-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #F5F2EB;
+}
+
+.chat-history {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.message-bubble {
+    padding: 15px;
+    border-radius: 4px;
+    border: 2.5px solid #3C3935;
+    max-width: 85%;
+    box-shadow: 2px 2px 0px #131211;
+    line-height: 1.45;
+    font-size: 13.5px;
+}
+
+.message-bubble.user {
+    background-color: #22201D;
+    align-self: flex-end;
+}
+
+.message-bubble.gemini {
+    background-color: #2A1F1B; /* Warm orange tint */
+    border-color: #FF6200;
+    align-self: flex-start;
+}
+
+.message-author {
+    font-weight: 700;
+    font-size: 11px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+
+.message-author.gemini { color: #FF6200; }
+
+.chat-composer {
+    padding: 20px;
+    border-top: 3px solid #3C3935;
+    background-color: #131211;
+    display: flex;
+    gap: 10px;
+}
+
+.chat-input {
+    flex: 1;
+    padding: 12px;
+    border: 2.5px solid #3C3935;
+    background-color: #1E1C1A;
+    outline: none;
+    font-family: inherit;
+    font-size: 13.5px;
+    border-radius: 4px;
+    color: #EAE6DF;
+    box-shadow: 2px 2px 0px #131211;
+}
+
+.chat-input:focus {
+    border-color: #FF6200;
 }
 
 /* Modal details */
@@ -734,11 +949,16 @@ h1, h2, h3, .brand-serif {
 }
 
 .modal-close {
-    font-size: 25px;
+    font-size: 24px;
     font-weight: 700;
     cursor: pointer;
     background: none;
     border: none;
     color: #EAE6DF;
     line-height: 1;
+}
+
+/* Custom completely-hidden state when no drawing is active */
+.workspace-right-chat.completely-hidden {
+    display: none !important;
 }

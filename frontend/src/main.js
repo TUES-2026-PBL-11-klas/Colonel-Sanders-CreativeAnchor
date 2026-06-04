@@ -13,6 +13,7 @@ function createWindow() {
             preload: path.join(__dirname, 'preload.js')
         },
         autoHideMenuBar: true,
+        ...(process.platform !== 'darwin' ? { titleBarOverlay: true } : {})
     });
 
     mainWindow.loadFile('src/login.html');

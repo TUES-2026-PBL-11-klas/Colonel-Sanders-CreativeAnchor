@@ -1,7 +1,7 @@
 {
   "name": "colonel-sanders-creativeanchor",
   "version": "1.0.0",
-  "description": "Very cool electron app",
+  "description": "Helper assistant for artists to manage their digital art and streamline their creative workflow.",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
