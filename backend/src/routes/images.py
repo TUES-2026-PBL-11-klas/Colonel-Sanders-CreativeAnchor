@@ -23,19 +23,7 @@ def uploadImage():
     filename = f'{uuid.uuid4()}'
     upload_image_thumbnail(image, thumbnail, filename, g.sub_uuid)
 
-
-    # image_uuid = upload_image(image, g.sub_uuid)
-
     return jsonify({"file_uuid": filename})
-
-
-# @blp.route("/images/thumbnail")
-# @blp.doc(security=[{"BearerAuth": []}])
-# @require_auth
-# def uploadThumbnail():
-#     if "thumbnail" not in request.files:
-#         pass
-
 
 @blp.route("/images/<uuid:image_uuid>", methods=["DELETE"])
 @blp.doc(security=[{"BearerAuth": []}])
