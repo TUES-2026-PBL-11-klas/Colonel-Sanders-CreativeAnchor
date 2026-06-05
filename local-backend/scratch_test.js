@@ -1,6 +1,6 @@
 async function runVerification() {
     console.log("Fetching gallery items...");
-    const galleryRes = await fetch("http://localhost:5000/api/gallery");
+    const galleryRes = await fetch("http://localhost:5002/api/gallery");
     const gallery = await galleryRes.json();
     
     // Choose an item with a valid thumbnail
@@ -13,7 +13,7 @@ async function runVerification() {
     console.log(`\n--- TESTING SINGLE-TRIGGER CRITIQUE FOR: ${targetItem.fileName} ---`);
     
     // Fetch chat history before test
-    const chatBeforeRes = await fetch(`http://localhost:5000/api/gallery/${targetItem.id}/chat`);
+    const chatBeforeRes = await fetch(`http://localhost:5002/api/gallery/${targetItem.id}/chat`);
     const chatBefore = await chatBeforeRes.json();
     console.log(`Chat messages before test: ${chatBefore.history.length}`);
     
@@ -29,9 +29,9 @@ async function runVerification() {
     // 2. Perform concurrent access requests to verify concurrency lock prevents duplicate triggers!
     console.log("Sending 3 concurrent POST /access requests simultaneously...");
     const promises = [
-        fetch(`http://localhost:5000/api/gallery/${targetItem.id}/access`, { method: 'POST' }),
-        fetch(`http://localhost:5000/api/gallery/${targetItem.id}/access`, { method: 'POST' }),
-        fetch(`http://localhost:5000/api/gallery/${targetItem.id}/access`, { method: 'POST' })
+        fetch(`http://localhost:5002/api/gallery/${targetItem.id}/access`, { method: 'POST' }),
+        fetch(`http://localhost:5002/api/gallery/${targetItem.id}/access`, { method: 'POST' }),
+        fetch(`http://localhost:5002/api/gallery/${targetItem.id}/access`, { method: 'POST' })
     ];
     
     const responses = await Promise.all(promises);
@@ -43,7 +43,7 @@ async function runVerification() {
     await new Promise(resolve => setTimeout(resolve, 12000));
     
     // 4. Check chat history length again
-    const chatAfterRes = await fetch(`http://localhost:5000/api/gallery/${targetItem.id}/chat`);
+    const chatAfterRes = await fetch(`http://localhost:5002/api/gallery/${targetItem.id}/chat`);
     const chatAfter = await chatAfterRes.json();
     console.log(`Chat messages after concurrent triggers: ${chatAfter.history.length}`);
     
@@ -60,10 +60,10 @@ async function runVerification() {
     
     // 5. Test another immediate access call to verify that once needsCritique is false, no API calls are made
     console.log("\nTriggering a subsequent access call immediately (needsCritique should be false)...");
-    await fetch(`http://localhost:5000/api/gallery/${targetItem.id}/access`, { method: 'POST' });
+    await fetch(`http://localhost:5002/api/gallery/${targetItem.id}/access`, { method: 'POST' });
     await new Promise(resolve => setTimeout(resolve, 3000));
     
-    const chatFinalRes = await fetch(`http://localhost:5000/api/gallery/${targetItem.id}/chat`);
+    const chatFinalRes = await fetch(`http://localhost:5002/api/gallery/${targetItem.id}/chat`);
     const chatFinal = await chatFinalRes.json();
     console.log(`Chat history length after secondary access: ${chatFinal.history.length}`);
     

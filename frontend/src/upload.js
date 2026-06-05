@@ -3,7 +3,7 @@ async function uploadImage() {
     const formData = new FormData();
     formData.append('image', file);
 
-    const response = await fetch('http://localhost:5000/upload', {
+    const response = await fetch('http://localhost:5002/upload', {
         method: 'POST',
         body: formData  // Don't set Content-Type header — browser sets it with boundary
     });

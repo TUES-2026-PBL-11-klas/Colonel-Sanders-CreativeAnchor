@@ -11,7 +11,7 @@ const multer = require('multer');
 const db = require('./db');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5002;
 
 app.use(cors());
 app.use(express.json());
@@ -342,7 +342,7 @@ async function sendToHostedBackend(thumbnailRelativePath, customPrompt = null, h
         formData.append('image', blob, path.basename(absoluteThumbPath));
 
         // Post image to hosted backend
-        const uploadRes = await fetch('http://localhost:5001/images', {
+        const uploadRes = await fetch('http://localhost:5000/images', {
             method: 'POST',
             body: formData
         });
@@ -376,7 +376,7 @@ async function sendToHostedBackend(thumbnailRelativePath, customPrompt = null, h
         bodyPayload.history = history;
     }
 
-    const chatRes = await fetch('http://localhost:5001/chat', {
+    const chatRes = await fetch('http://localhost:5000/chat', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'

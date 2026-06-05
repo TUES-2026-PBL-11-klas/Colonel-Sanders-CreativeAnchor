@@ -13,7 +13,7 @@ function request(method, urlPath, body = null) {
     return new Promise((resolve, reject) => {
         const options = {
             hostname: 'localhost',
-            port: 5000,
+            port: 5002,
             path: urlPath,
             method: method,
             headers: {
