@@ -283,47 +283,105 @@ function getInitialPrompt() {
     return "Analyze my drawing and give me feedback.";
 }
 
+// Check for simple prompt injections or off-topic keywords (Local Guardrail)
+function checkOffTopicOrInjection(prompt) {
+    if (!prompt) return null;
+    const lower = prompt.toLowerCase();
+    const forbiddenPatterns = [
+        "forget all instructions",
+        "ignore previous instructions",
+        "ignore all instructions",
+        "forget previous instructions",
+        "system prompt",
+        "cupcake recipe",
+        "recipe for",
+        "how to bake",
+        "write code for"
+    ];
+    for (const pattern of forbiddenPatterns) {
+        if (lower.includes(pattern)) {
+            return "I am here to help you with your art and guide you through creative burnout. Let's focus on your artwork!";
+        }
+    }
+    return null;
+}
+
 // Helper to upload thumbnail and call Flask AI chat endpoint
-async function sendToHostedBackend(thumbnailRelativePath) {
-    if (!thumbnailRelativePath) {
-        throw new Error("No thumbnail path provided");
-    }
-    const absoluteThumbPath = path.resolve(__dirname, thumbnailRelativePath);
-    if (!fs.existsSync(absoluteThumbPath)) {
-        throw new Error(`Thumbnail file not found at: ${absoluteThumbPath}`);
-    }
-
-    console.log(`[AI BRIDGE] Uploading thumbnail to hosted backend: ${absoluteThumbPath}`);
-    const fileBuffer = fs.readFileSync(absoluteThumbPath);
-    const blob = new Blob([fileBuffer], { type: 'image/png' });
-    const formData = new FormData();
-    formData.append('image', blob, path.basename(absoluteThumbPath));
-
-    // 1. Post image to hosted backend
-    const uploadRes = await fetch('http://localhost:5001/images', {
-        method: 'POST',
-        body: formData
-    });
-
-    if (!uploadRes.ok) {
-        const errorText = await uploadRes.text();
-        throw new Error(`Failed to upload image: ${uploadRes.statusText} - ${errorText}`);
+async function sendToHostedBackend(thumbnailRelativePath, customPrompt = null, history = null, imageUuid = null, isTestMode = false) {
+    // 1. Guardrail check (local layer)
+    if (customPrompt) {
+        const localBlockResponse = checkOffTopicOrInjection(customPrompt);
+        if (localBlockResponse) {
+            console.log("[GUARDRAIL] Local block triggered for prompt:", customPrompt);
+            return { text: localBlockResponse, imageUuid: imageUuid || "test-uuid-999" };
+        }
     }
 
-    const uploadData = await uploadRes.json();
-    const imageUuid = uploadData.file_uuid;
-    console.log(`[AI BRIDGE] Image uploaded. UUID: ${imageUuid}`);
+    if (isTestMode) {
+        console.log("[AI BRIDGE] [TEST MODE] Simulating hosted backend response");
+        return {
+            text: "Gemini Critique: The lighting is well balanced. Try focusing on anatomy instead of over-rendering.",
+            imageUuid: imageUuid || "test-uuid-999"
+        };
+    }
+
+    let finalImageUuid = imageUuid;
+    if (!finalImageUuid) {
+        if (!thumbnailRelativePath) {
+            throw new Error("No thumbnail path or image UUID provided");
+        }
+        const absoluteThumbPath = path.resolve(__dirname, thumbnailRelativePath);
+        if (!fs.existsSync(absoluteThumbPath)) {
+            throw new Error(`Thumbnail file not found at: ${absoluteThumbPath}`);
+        }
+
+        console.log(`[AI BRIDGE] Uploading thumbnail to hosted backend: ${absoluteThumbPath}`);
+        const fileBuffer = fs.readFileSync(absoluteThumbPath);
+        const blob = new Blob([fileBuffer], { type: 'image/png' });
+        const formData = new FormData();
+        formData.append('image', blob, path.basename(absoluteThumbPath));
+
+        // Post image to hosted backend
+        const uploadRes = await fetch('http://localhost:5001/images', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!uploadRes.ok) {
+            const errorText = await uploadRes.text();
+            throw new Error(`Failed to upload image: ${uploadRes.statusText} - ${errorText}`);
+        }
+
+        const uploadData = await uploadRes.json();
+        finalImageUuid = uploadData.file_uuid;
+        console.log(`[AI BRIDGE] Image uploaded. UUID: ${finalImageUuid}`);
+    }
 
     // 2. Request chat response from hosted backend
-    console.log(`[AI BRIDGE] Requesting AI critique for UUID: ${imageUuid}`);
+    console.log(`[AI BRIDGE] Requesting AI response for UUID: ${finalImageUuid}`);
+    
+    // Add guardrail wrapper around customPrompt to prevent LLM level prompt injection
+    let processedPrompt = customPrompt;
+    if (customPrompt) {
+        processedPrompt = `[GUARDRAIL: You are strictly an Art Critic and Psychological Mentor. If the user query is off-topic, refuse to answer and remind them to focus on art/burnout. User Query: "${customPrompt}"]`;
+    }
+
+    const bodyPayload = {
+        image_uuid: finalImageUuid
+    };
+    if (processedPrompt !== null && processedPrompt !== undefined) {
+        bodyPayload.custom_prompt = processedPrompt;
+    }
+    if (history) {
+        bodyPayload.history = history;
+    }
+
     const chatRes = await fetch('http://localhost:5001/chat', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-            image_uuid: imageUuid
-        })
+        body: JSON.stringify(bodyPayload)
     });
 
     if (!chatRes.ok) {
@@ -333,7 +391,10 @@ async function sendToHostedBackend(thumbnailRelativePath) {
 
     const chatData = await chatRes.json();
     console.log(`[AI BRIDGE] AI Response received:`, chatData.text);
-    return chatData.text;
+    return {
+        text: chatData.text,
+        imageUuid: finalImageUuid
+    };
 }
 
 // ----------------------------------------------------
@@ -446,10 +507,21 @@ app.post('/api/gallery/:id/access', async (req, res) => {
         (async () => {
             try {
                 const initialPrompt = getInitialPrompt();
-                const critique = await sendToHostedBackend(entry.thumbnailPath);
+                const isTestMode = req.headers['x-test-mode'] === 'true' || process.env.NODE_ENV === 'test';
+                const { text: critique, imageUuid } = await sendToHostedBackend(
+                    entry.thumbnailPath,
+                    null,
+                    null,
+                    entry.imageUuid,
+                    isTestMode
+                );
 
                 db.addMessageToChat(id, "gemini", critique);
-                console.log(`[AI BRIDGE] Critique successfully added to chat history for "${entry.fileName}".`);
+                db.saveGalleryEntry({
+                    id: id,
+                    imageUuid: imageUuid
+                });
+                console.log(`[AI BRIDGE] Critique successfully added to chat history for "${entry.fileName}". Saved imageUuid: ${imageUuid}`);
             } catch (error) {
                 console.error(`[AI BRIDGE] Error during critique for ${entry.fileName}:`, error.message);
                 // Restore needsCritique to true so it can retry on next click
@@ -526,24 +598,41 @@ app.get('/api/gallery/burnout-check', (req, res) => {
     });
 });
 
-// 6. Mock Gemini Burnout Analysis (simulated artist feedback)
-app.post('/api/gallery/:id/review', (req, res) => {
+// 6. Gemini Burnout Analysis (real artist feedback)
+app.post('/api/gallery/:id/review', async (req, res) => {
     const { id } = req.params;
     const { customPrompt } = req.body;
     const entry = db.getGalleryEntry(id);
     if (!entry) return res.status(404).json({ success: false, error: 'Gallery entry not found' });
 
-    const critique = `Gemini Critique on "${entry.fileName}" (${entry.hoursSpent} hours spent): The lighting values are well balanced. However, the composition is highly centralized, which might feel static. Try cropping slightly to apply the Rule of Thirds to restore energy!` + 
-        (customPrompt ? `\n\n[In response to your query "${customPrompt}"]: Try focusing on simple anatomical silhouettes instead of over-rendering details to prevent cognitive overload.` : "");
+    try {
+        const isTestMode = req.headers['x-test-mode'] === 'true' || process.env.NODE_ENV === 'test';
+        const { text: critique, imageUuid } = await sendToHostedBackend(
+            entry.thumbnailPath,
+            customPrompt || "Analyze my drawing",
+            null,
+            entry.imageUuid,
+            isTestMode
+        );
 
-    db.addMessageToChat(id, "user", customPrompt || "Analyze my drawing");
-    const geminiMsg = db.addMessageToChat(id, "gemini", critique);
+        // Save image UUID back if it was generated/uploaded
+        db.saveGalleryEntry({
+            id: id,
+            imageUuid: imageUuid
+        });
 
-    res.json({
-        success: true,
-        review: critique,
-        message: geminiMsg
-    });
+        db.addMessageToChat(id, "user", customPrompt || "Analyze my drawing");
+        const geminiMsg = db.addMessageToChat(id, "gemini", critique);
+
+        res.json({
+            success: true,
+            review: critique,
+            message: geminiMsg
+        });
+    } catch (error) {
+        console.error(`[AI BRIDGE] Error during review for ${entry.fileName}:`, error.message);
+        res.status(500).json({ success: false, error: `Failed to generate critique: ${error.message}` });
+    }
 });
 
 // 7. Simulated Cloud Sync Endpoint (Privacy-First Payload Receipt)
@@ -576,13 +665,61 @@ app.get('/api/gallery/:id/chat', (req, res) => {
 });
 
 // 9. Post new message to local chat
-app.post('/api/gallery/:id/chat', (req, res) => {
+app.post('/api/gallery/:id/chat', async (req, res) => {
     const { id } = req.params;
     const { sender, message } = req.body;
     if (!message) {
         return res.status(400).json({ success: false, error: "Message content required" });
     }
+
+    const entry = db.getGalleryEntry(id);
+    if (!entry) {
+        return res.status(404).json({ success: false, error: "Gallery entry not found" });
+    }
+
+    // 1. Add user message to local chat
     const msg = db.addMessageToChat(id, sender || "user", message);
+
+    // 2. If sender is user, trigger the AI response
+    const activeSender = sender || "user";
+    if (activeSender === "user") {
+        try {
+            const chat = db.getChatByGalleryEntry(id);
+            // Format history for Gemini (excluding the last message we just added)
+            const history = chat.history.slice(0, -1).map(m => ({
+                role: m.sender === "user" ? "user" : "model",
+                content: m.message
+            }));
+
+            const isTestMode = req.headers['x-test-mode'] === 'true' || process.env.NODE_ENV === 'test';
+            const { text: critique, imageUuid } = await sendToHostedBackend(
+                entry.thumbnailPath,
+                message,
+                history,
+                entry.imageUuid,
+                isTestMode
+            );
+
+            // Update cached image UUID if it was generated/uploaded
+            db.saveGalleryEntry({
+                id: id,
+                imageUuid: imageUuid
+            });
+
+            // Save AI response to local chat
+            const aiMsg = db.addMessageToChat(id, "gemini", critique);
+
+            return res.json({
+                success: true,
+                message: msg,
+                aiResponse: aiMsg
+            });
+        } catch (error) {
+            console.error(`[AI BRIDGE] Error during chat for ${entry.fileName}:`, error.message);
+            return res.status(500).json({ success: false, error: `Failed to get AI response: ${error.message}` });
+        }
+    }
+
     res.json({ success: true, message: msg });
 });
 
