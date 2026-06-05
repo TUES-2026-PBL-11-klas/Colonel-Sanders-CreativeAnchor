@@ -29,7 +29,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 15px;
+    padding: 0 0 0 15px; /* 0 on right to let controls align to edge */
     -webkit-app-region: drag; /* Makes the title bar draggable! */
     user-select: none;
     z-index: 1000;
@@ -48,32 +48,55 @@ body {
 
 .window-controls {
     display: flex;
-    gap: 8px;
+    height: 100%;
     -webkit-app-region: no-drag; /* Prevents dragging over title control buttons */
 }
 
 .window-control-btn {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
+    width: 46px;
+    height: 100%;
     border: none;
+    background: transparent;
     cursor: pointer;
     outline: none;
-    transition: transform 0.1s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #A59E92;
+    transition: background-color 0.1s ease, color 0.1s ease;
 }
 
 .window-control-btn:hover {
-    transform: scale(1.2);
+    background-color: #2C2925; /* Dark warm charcoal */
+    color: #EAE6DF;
 }
 
-.window-control-btn.close {
-    background-color: #FF5F56; /* Red */
+.window-control-btn:active {
+    background-color: #3C3935;
 }
-.window-control-btn.minimize {
-    background-color: #FFBD2E; /* Yellow */
+
+.window-control-btn.close:hover {
+    background-color: #E81123; /* Windows close red */
+    color: #FFFFFF;
 }
-.window-control-btn.maximize {
-    background-color: #27C93F; /* Green */
+
+.window-control-btn.close:active {
+    background-color: #F1707A;
+}
+
+/* Toggle maximize and restore icons based on state */
+.window-control-btn.maximize .icon-restore {
+    display: none;
+}
+.window-control-btn.maximize .icon-max {
+    display: inline-block;
+}
+
+.window-maximized .window-control-btn.maximize .icon-restore {
+    display: inline-block;
+}
+.window-maximized .window-control-btn.maximize .icon-max {
+    display: none;
 }
 
 .app-main-layout {
@@ -715,6 +738,7 @@ h1, h2, h3, .brand-serif {
     margin-bottom: 12px;
     min-height: 40px;
     display: -webkit-box;
+    line-clamp: 2;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;

@@ -13,6 +13,36 @@ function navigateTo(page) {
     window.electronAPI.navigate(page);
 }
 
+// Window controls global integration
+window.minimizeWindow = () => {
+    if (window.electronAPI && window.electronAPI.minimize) {
+        window.electronAPI.minimize();
+    }
+};
+
+window.maximizeWindow = () => {
+    if (window.electronAPI && window.electronAPI.maximize) {
+        window.electronAPI.maximize();
+    }
+};
+
+window.closeWindow = () => {
+    if (window.electronAPI && window.electronAPI.close) {
+        window.electronAPI.close();
+    }
+};
+
+// Monitor maximized state to adjust style
+if (window.electronAPI && window.electronAPI.onMaximizedState) {
+    window.electronAPI.onMaximizedState((isMaximized) => {
+        if (isMaximized) {
+            document.body.classList.add('window-maximized');
+        } else {
+            document.body.classList.remove('window-maximized');
+        }
+    });
+}
+
 // Input validation
 function isValidEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);

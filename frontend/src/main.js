@@ -1,7 +1,12 @@
 // src/main.js
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
+const Store = require('electron-store').default;
+
+const store = new Store();
 let mainWindow;
+
+app.disableHardwareAcceleration();
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -12,11 +17,18 @@ function createWindow() {
             contextIsolation: true,
             preload: path.join(__dirname, 'preload.js')
         },
-        autoHideMenuBar: true,
-        ...(process.platform !== 'darwin' ? { titleBarOverlay: true } : {})
+        frame: false
     });
 
     mainWindow.loadFile('src/login.html');
+
+    mainWindow.on('maximize', () => {
+        mainWindow.webContents.send('window-maximized-state', true);
+    });
+
+    mainWindow.on('unmaximize', () => {
+        mainWindow.webContents.send('window-maximized-state', false);
+    });
 
     mainWindow.on('closed', () => {
         mainWindow = null;
