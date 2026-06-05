@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: supabase-auth
+  namespace: supabase
+  labels:
+    app: supabase-auth
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: supabase-auth
+  template:
+    metadata:
+      labels:
+        app: supabase-auth
+    spec:
+      containers:
+        - name: auth
+          image: supabase/gotrue:v2.162.0
+          env:
+            - name: GOTRUE_DB_DRIVER
+              value: postgres
+            - name: GOTRUE_DB_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-secrets
+                  key: db-url
+            - name: GOTRUE_SITE_URL
+              value: http://localhost:3000
+            - name: GOTRUE_API_HOST
+              value: 0.0.0.0
+            - name: GOTRUE_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-secrets
+                  key: jwt-secret
+            - name: GOTRUE_JWT_EXP
+              value: "3600"
+            - name: GOTRUE_EXTERNAL_EMAIL_ENABLED
+              value: "true"
+            - name: GOTRUE_MAILER_AUTOCONFIRM
+              value: "true"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          ports:
+            - containerPort: 9999

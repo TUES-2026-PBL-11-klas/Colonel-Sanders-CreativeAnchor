@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: supabase-kong-config
+  namespace: supabase
+data:
+  kong.yml: |
+    _format_version: "2.1"
+    services:
+      - name: auth
+        url: http://supabase-auth:9999
+        routes:
+          - name: auth
+            paths:
+              - /auth
+      - name: rest
+        url: http://supabase-rest:3000
+        routes:
+          - name: rest
+            paths:
+              - /rest
+      - name: realtime
+        url: http://supabase-realtime:4000
+        routes:
+          - name: realtime
+            paths:
+              - /realtime
+      - name: storage
+        url: http://supabase-storage:5000
+        routes:
+          - name: storage
+            paths:
+              - /storage

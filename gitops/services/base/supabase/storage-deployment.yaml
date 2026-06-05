@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: supabase-storage
+  namespace: supabase
+  labels:
+    app: supabase-storage
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: supabase-storage
+  template:
+    metadata:
+      labels:
+        app: supabase-storage
+    spec:
+      containers:
+        - name: storage
+          image: supabase/storage-api:v1.10.0
+          env:
+            - name: ANON_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-secrets
+                  key: anon-key
+            - name: SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-secrets
+                  key: service-role-key
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-secrets
+                  key: jwt-secret
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-secrets
+                  key: db-url
+            - name: FILE_SIZE_LIMIT
+              value: "52428800"
+            - name: STORAGE_BACKEND
+              value: file
+            - name: FILE_STORAGE_BACKEND_PATH
+              value: /var/lib/storage
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          ports:
+            - containerPort: 5000
+          volumeMounts:
+            - name: storage-data
+              mountPath: /var/lib/storage
+      volumes:
+        - name: storage-data
+          persistentVolumeClaim:
+            claimName: supabase-storage-pvc
