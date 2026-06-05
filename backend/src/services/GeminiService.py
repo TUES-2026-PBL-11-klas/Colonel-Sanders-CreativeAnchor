@@ -6,15 +6,7 @@ _AIModel = "gemini-3.5-flash"
 
 _AIClient = genai.Client()
 
-def _chat2(url: str):
-    res = _AIClient.models.generate_content(
-        model=_AIModel,
-        contents=[
-            "Describe this image.",
-            types.Part.from_uri(file_uri=url, mime_type="image/jpeg"),
-        ] 
-    )
-    return res
+_AIPrompt = ""
 
 def _chat(image_data):
     buffer = io.BytesIO(image_data)
@@ -25,6 +17,9 @@ def _chat(image_data):
     )
     res = _AIClient.models.generate_content(
         model=_AIModel,
-        contents=["Describe this image.", uploaded_file],
+        contents=[
+            _AIPrompt,
+            uploaded_file
+        ],
     )
     return res
