@@ -170,10 +170,10 @@ async function runTests() {
     const finalGallery = await request('GET', '/api/gallery');
     const finalEntry = finalGallery.find(item => item.id === entry.id);
     console.log("Final database status:", finalEntry.status);
-    if (finalEntry.status === 'SYNCED') {
+    if (finalEntry.status === 'synced') {
         console.log("\n=== ALL INTEGRATION TESTS COMPLETED SUCCESSFULLY! ===");
     } else {
-        throw new Error("Optional sync failed to transition status to SYNCED.");
+        throw new Error("Optional sync failed to transition status to synced.");
     }
 
     // Clean up

@@ -192,7 +192,7 @@ function initFolderWatcher(watchPath) {
             db.saveGalleryEntry({
                 fileName: fileName,
                 fileHash: fileHash,
-                status: "LOCAL_ONLY",
+                status: "local_only",
                 hoursSpent: 0.0,
                 metadata: {
                     sizeBytes: stats.size,
@@ -210,7 +210,7 @@ function initFolderWatcher(watchPath) {
             db.saveGalleryEntry({
                 id: existing.id,
                 fileHash: fileHash,
-                status: "LOCAL_ONLY",
+                status: "local_only",
                 updatedAt: stats.mtime.toISOString(),
                 thumbnailPath: thumbnailPath,
                 metadata: {
@@ -237,7 +237,7 @@ function initFolderWatcher(watchPath) {
             db.saveGalleryEntry({
                 id: existing.id,
                 fileHash: fileHash,
-                status: "LOCAL_ONLY",
+                status: "local_only",
                 updatedAt: stats.mtime.toISOString(),
                 thumbnailPath: thumbnailPath,
                 metadata: {
@@ -307,7 +307,7 @@ function checkOffTopicOrInjection(prompt) {
 }
 
 // Helper to upload thumbnail and call Flask AI chat endpoint
-async function sendToHostedBackend(thumbnailRelativePath, customPrompt = null, history = null, imageUuid = null, isTestMode = false) {
+async function sendToHostedBackend(thumbnailRelativePath, customPrompt = null, history = null, imageUuid = null, isTestMode = false, authHeader = null) {
     // 1. Guardrail check (local layer)
     if (customPrompt) {
         const localBlockResponse = checkOffTopicOrInjection(customPrompt);
@@ -339,12 +339,22 @@ async function sendToHostedBackend(thumbnailRelativePath, customPrompt = null, h
         const fileBuffer = fs.readFileSync(absoluteThumbPath);
         const blob = new Blob([fileBuffer], { type: 'image/png' });
         const formData = new FormData();
+        
+        // Append thumbnail as both 'image' and 'thumbnail' to bypass file size limits
+        // while fulfilling the Python backend's requirement for both keys.
         formData.append('image', blob, path.basename(absoluteThumbPath));
+        formData.append('thumbnail', blob, path.basename(absoluteThumbPath));
 
         // Post image to hosted backend
+        const uploadHeaders = {};
+        if (authHeader) {
+            uploadHeaders['Authorization'] = authHeader;
+        }
+
         const uploadRes = await fetch('http://localhost:5000/images', {
             method: 'POST',
-            body: formData
+            body: formData,
+            headers: uploadHeaders
         });
 
         if (!uploadRes.ok) {
@@ -376,11 +386,16 @@ async function sendToHostedBackend(thumbnailRelativePath, customPrompt = null, h
         bodyPayload.history = history;
     }
 
+    const chatHeaders = {
+        'Content-Type': 'application/json'
+    };
+    if (authHeader) {
+        chatHeaders['Authorization'] = authHeader;
+    }
+
     const chatRes = await fetch('http://localhost:5000/chat', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
+        headers: chatHeaders,
         body: JSON.stringify(bodyPayload)
     });
 
@@ -455,7 +470,7 @@ app.post('/upload', upload.single('image'), async (req, res) => {
     const entry = db.saveGalleryEntry({
         fileName: fileName,
         fileHash: fileHash,
-        status: "LOCAL_ONLY",
+        status: "local_only",
         hoursSpent: 0.0,
         metadata: {
             sizeBytes: stats.size,
@@ -488,6 +503,7 @@ app.post('/api/gallery/:id/access', async (req, res) => {
         return res.status(404).json({ success: false, error: 'Gallery entry not found' });
     }
 
+    const authHeader = req.headers['authorization'];
     const chat = db.getChatByGalleryEntry(id);
     // Needs critique if chat is empty OR if it has been marked as needing critique since the last save
     const shouldCritique = (chat.history.length === 0 || entry.needsCritique === true) && entry.thumbnailPath;
@@ -513,7 +529,8 @@ app.post('/api/gallery/:id/access', async (req, res) => {
                     null,
                     null,
                     entry.imageUuid,
-                    isTestMode
+                    isTestMode,
+                    authHeader
                 );
 
                 db.addMessageToChat(id, "gemini", critique);
@@ -606,13 +623,15 @@ app.post('/api/gallery/:id/review', async (req, res) => {
     if (!entry) return res.status(404).json({ success: false, error: 'Gallery entry not found' });
 
     try {
+        const authHeader = req.headers['authorization'];
         const isTestMode = req.headers['x-test-mode'] === 'true' || process.env.NODE_ENV === 'test';
         const { text: critique, imageUuid } = await sendToHostedBackend(
             entry.thumbnailPath,
             customPrompt || "Analyze my drawing",
             null,
             entry.imageUuid,
-            isTestMode
+            isTestMode,
+            authHeader
         );
 
         // Save image UUID back if it was generated/uploaded
@@ -642,7 +661,7 @@ app.post('/api/gallery/:id/sync', (req, res) => {
     if (!entry) return res.status(404).json({ success: false, error: 'Gallery entry not found' });
 
     const chat = db.getChatByGalleryEntry(id);
-    const updated = db.saveGalleryEntry({ id: id, status: "SYNCED" });
+    const updated = db.saveGalleryEntry({ id: id, status: "synced" });
 
     res.json({
         success: true,
@@ -684,6 +703,7 @@ app.post('/api/gallery/:id/chat', async (req, res) => {
     const activeSender = sender || "user";
     if (activeSender === "user") {
         try {
+            const authHeader = req.headers['authorization'];
             const chat = db.getChatByGalleryEntry(id);
             // Format history for Gemini (excluding the last message we just added)
             const history = chat.history.slice(0, -1).map(m => ({
@@ -697,7 +717,8 @@ app.post('/api/gallery/:id/chat', async (req, res) => {
                 message,
                 history,
                 entry.imageUuid,
-                isTestMode
+                isTestMode,
+                authHeader
             );
 
             // Update cached image UUID if it was generated/uploaded

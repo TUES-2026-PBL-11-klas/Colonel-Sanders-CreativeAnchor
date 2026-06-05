@@ -81,7 +81,7 @@ class GalleryEntry {
     constructor({
         id,
         fileName,
-        status = "LOCAL_ONLY",
+        status = "local_only",
         fileHash = "",
         hoursSpent = 0.0,
         metadata = {},
@@ -119,7 +119,7 @@ class GalleryEntry {
     }
 
     markAsSynced() {
-        this.status = "SYNCED";
+        this.status = "synced";
         this.updatedAt = new Date().toISOString();
     }
 }
@@ -276,7 +276,7 @@ class LocalDatabase {
             entry = new GalleryEntry({
                 id: entryData.id || uuidv4(),
                 fileName: entryData.fileName,
-                status: entryData.status || "LOCAL_ONLY",
+                status: entryData.status || "local_only",
                 fileHash: entryData.fileHash || "",
                 hoursSpent: entryData.hoursSpent || 0.0,
                 metadata: entryData.metadata || {},
