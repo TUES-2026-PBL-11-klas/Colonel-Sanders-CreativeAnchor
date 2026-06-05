@@ -4,6 +4,14 @@ A local-first, anti-burnout desktop utility designed for digital artists. It dyn
 
 ---
 
+## How to run:
+``` terminal
+cd frontend
+npm install
+npm run start
+```
+
+
 ## Repository Structure
 
 The project is structured as a clean monorepo:

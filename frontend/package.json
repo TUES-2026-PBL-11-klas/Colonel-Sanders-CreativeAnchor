@@ -1,10 +1,10 @@
 {
   "name": "colonel-sanders-creativeanchor",
   "version": "1.0.0",
-  "description": "Very cool electron app",
+  "description": "Helper assistant for artists to manage their digital art and streamline their creative workflow.",
   "main": "src/main.js",
   "scripts": {
-    "start": "electron . --ozone-platform=x11",
+    "start": "electron .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -17,7 +17,10 @@
     "url": "https://github.com/TUES-2026-PBL-11-klas/Colonel-Sanders-CreativeAnchor/issues"
   },
   "homepage": "https://github.com/TUES-2026-PBL-11-klas/Colonel-Sanders-CreativeAnchor#readme",
+  "dependencies": {
+    "electron-store": "^11.0.2"
+  },
   "devDependencies": {
-    "electron": "^42.3.0"
+    "electron": "^42.3.2"
   }
 }
