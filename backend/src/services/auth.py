@@ -1,28 +1,27 @@
-import jwt
-from functools import wraps
-from flask import request, jsonify, g
+import functools
 import os
-
-JWT_SECRET = os.environ["SUPABASE_JWT_SECRET"]
+from flask import request, jsonify, g
+from src.services.supabase import _Client
+from supabase_auth.errors import AuthInvalidJwtError
 
 
 def require_auth(f):
-    @wraps(f)
+    @functools.wraps(f)
     def decorated(*args, **kwargs):
         auth_header = request.headers.get("Authorization", "")
         if not auth_header.startswith("Bearer "):
             return jsonify({"error": "Missing token"}), 401
 
         token = auth_header.split(" ")[1]
+
         try:
-            payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"],
-                                 options={"verify_aud": False})
-            g.user_id = payload["sub"]  # Supabase user UUID
-            g.user = payload
-        except jwt.ExpiredSignatureError:
-            return jsonify({"error": "Token expired"}), 401
-        except jwt.InvalidTokenError:
+            res = _Client.auth.get_claims(token)
+            g.jwt_claims = res
+            g.sub_uuid = res["claims"]["sub"]
+        except AuthInvalidJwtError:
             return jsonify({"error": "Invalid token"}), 401
+        except Exception as e:
+            return jsonify({"error": "Auth failed"}), 401
 
         return f(*args, **kwargs)
     return decorated

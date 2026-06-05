@@ -1,13 +1,17 @@
 from flask_smorest import Blueprint
-from flask import jsonify, request
+from flask import jsonify, request, g
 from src.services.supabase import upload_image, delete_image
+from src.services.auth import require_auth
 import uuid
 
 blp = Blueprint("Images", "images", description="Images endpoints.")
 
 
 @blp.route("/images", methods=["POST"])
-def get():
+@blp.doc(security=[{"BearerAuth": []}])
+@require_auth
+def get():   
+    print(f'{g.jwt_claims}') 
     if "image" not in request.files:
         return jsonify({'error': 'File not found in request.'}), 400
 
@@ -19,6 +23,8 @@ def get():
 
 
 @blp.route("/images/<uuid:image_uuid>", methods=["DELETE"])
+@blp.doc(security=[{"BearerAuth": []}])
+@require_auth
 def getImageUrl(image_uuid: uuid):
     res = delete_image(image_uuid)
     if res:

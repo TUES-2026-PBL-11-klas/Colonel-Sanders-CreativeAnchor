@@ -14,9 +14,19 @@ class Config:
     OPENAPI_SWAGGER_UI_URL = (
         "https://cdn.jsdelivr.net/npm/swagger-ui-dist/"
     )
+    API_SPEC_OPTIONS = {
+        "components": {
+            "securitySchemes": {
+                "BearerAuth": {
+                    "type": "http",
+                    "scheme": "bearer",
+                    "bearerFormat": "JWT",
+                }
+            }
+        },
+    }
 
     IMAGE_EXTENSIONS = {"png", "jpeg"}  # da dobawim oshte mozhe bi
 
     SUPABASE_URL = os.environ.get("SUPABASE_URL")
     SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
-    SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET")
