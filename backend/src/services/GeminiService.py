@@ -1,6 +1,8 @@
 from google import genai
 from google.genai import types
 import io
+import uuid
+from src.services.supabase import _Client
 
 _AIModel = "gemini-3.5-flash"
 
@@ -53,18 +55,56 @@ JSON SCHEMA:
 }
 """
 
-def _chat(image_data):
-    buffer = io.BytesIO(image_data)
-    buffer.name = "image.png"
-    uploaded_file = _AIClient.files.upload(
-        file=buffer,
-        config={"mime_type": "image/png"},
+def _map_role(role: str) -> str:
+    if role == "human":
+        return "user"
+    if role == "ai":
+        return "model"
+    return role
+
+def _get_history(chat_uuid: uuid):
+   res = (
+      _Client.table("messages")
+      .select("*")
+      .eq("chat_id", chat_uuid)
+      .order("created_at", desc=False)
+      .execute()
     )
-    res = _AIClient.models.generate_content(
-        model=_AIModel,
-        contents=[
-            _AIPrompt,
-            uploaded_file
-        ],
+   return res.data
+
+def _chat(image_data, custom_prompt=None, history=None):
+  buffer = io.BytesIO(image_data)
+  buffer.name = "image.png"
+  uploaded_file = _AIClient.files.upload(
+      file=buffer,
+      config={"mime_type": "image/png"},
+  )
+  contents = [uploaded_file]
+
+  #supabase returns a list <- res.data
+  history = history or []
+
+  for msg in history:
+    role = _map_role(msg.get("role"))
+    content = msg.get("content")
+
+    if not content:
+        continue
+
+    contents.append(
+        types.Content(
+            role=role,
+            parts=[types.Part.from_text(text=content)]
+        )
     )
-    return res
+
+  if custom_prompt:
+      contents.append(types.Part.from_text(text=custom_prompt))
+  res = _AIClient.models.generate_content(
+      model=_AIModel,
+      contents=contents,
+      config=types.GenerateContentConfig(
+          system_instruction=_AIPrompt
+      )
+  )
+  return res

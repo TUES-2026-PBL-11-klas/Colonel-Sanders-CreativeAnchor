@@ -2,7 +2,7 @@ from flask_smorest import Blueprint
 from src.schemas.ChatSchema import NewChatSchema, NewMessageSchema
 from flask import jsonify
 from src.services.supabase import _Client
-from src.services.GeminiService import _chat
+from src.services.GeminiService import _chat, _get_history
 from src.services.auth import require_auth
 import uuid
 
@@ -29,14 +29,7 @@ def newChat(json_data):
 @blp.doc(security=[{"BearerAuth": []}])
 @require_auth
 def getChatContents(chat_uuid: uuid):
-    res = (
-        _Client.table("messages")
-        .select("*")
-        .eq("chat_id", chat_uuid)
-        .order("created_at", desc=True)
-        .execute()
-    )
-    return jsonify({"chat": res.data}), 200
+    return jsonify({"chat": _get_history(chat_uuid=chat_uuid)}), 200
 
 @blp.route("/chat/<uuid:chat_uuid>", methods=["POST"])
 @blp.doc(security=[{"BearerAuth": []}])
