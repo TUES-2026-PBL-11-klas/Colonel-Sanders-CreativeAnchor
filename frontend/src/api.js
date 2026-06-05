@@ -1,7 +1,15 @@
 // src/api.js
 
+// Fix #6: Gate verbose logging behind a debug flag so tokens/endpoints
+// are never written to the console in production builds.
+const DEBUG = false;
+const log = (...args) => { if (DEBUG) console.log(...args); };
+
 // ── Base URL construction ─────────────────────────────────────────────────────
-const API_BASE_URL = 'http://localhost:5000/';
+// Note: no trailing slash — endpoints are always absolute paths (e.g. '/login')
+// so new URL('/login', base) works correctly and template literals don't
+// accidentally produce double slashes (e.g. 'http://host//refresh').
+const API_BASE_URL = 'http://localhost:5000';
 
 // ── Token storage IPC helpers ─────────────────────────────────────────────────
 const getAccessToken = () =>
@@ -132,14 +140,14 @@ class API {
 
         const fullUrl = new URL(endpoint, API_BASE_URL).toString();
 
-        console.log(`[API] ${options.method || 'GET'} ${fullUrl}`);
+        log(`[API] ${options.method || 'GET'} ${fullUrl}`);
 
         const response = await fetch(fullUrl, {
             ...options,
             headers,
         });
 
-        console.log(`[API] Response: ${response.status} ${response.statusText}`);
+        log(`[API] Response: ${response.status} ${response.statusText}`);
 
         return response;
     }
@@ -184,7 +192,22 @@ class API {
 
     // ── Auth ──────────────────────────────────────────────────────────────────
     static async logout() {
-        // Backend /logout is not implemented yet, so this is local logout only.
+        // Fix #5: Attempt to revoke the refresh token server-side before clearing
+        // locally.  We fire-and-forget — local tokens are always cleared even if
+        // the server is unreachable or the endpoint is not yet implemented.
+        try {
+            const refreshToken = await getRefreshToken();
+            if (refreshToken) {
+                await fetch(`${API_BASE_URL}/logout`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh_token: refreshToken }),
+                });
+            }
+        } catch {
+            // Server unreachable — local logout still proceeds.
+        }
+
         await clearTokens();
 
         return {

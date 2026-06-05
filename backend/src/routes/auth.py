@@ -19,7 +19,8 @@ def signup(json_data):
     })
     return {
         "access_token": res.session.access_token,
-        "refresh_token": res.session.refresh_token
+        "refresh_token": res.session.refresh_token,
+        "token_type": res.session.token_type or "bearer",
     }
 
 
@@ -33,7 +34,8 @@ def login(json_data):
     })
     return {
         "access_token": res.session.access_token,
-        "refresh_token": res.session.refresh_token
+        "refresh_token": res.session.refresh_token,
+        "token_type": res.session.token_type or "bearer",
     }
 
 
@@ -52,7 +54,10 @@ def refresh(json_data):
     except Exception:
         return jsonify({"error": "Internal server error"}), 500
 
-# @blp.route("/logout", methods=["POST"])
-# def logout():
-#     _Client.auth.sign_out()
-#     return jsonify({"message": "Logged out"}), 200
+@blp.route("/logout", methods=["POST"])
+def logout():
+    try:
+        _Client.auth.sign_out()
+    except Exception:
+        pass  # Best-effort — always return success so the client clears local tokens.
+    return jsonify({"message": "Logged out"}), 200

@@ -24,9 +24,9 @@ class TokenRefreshSchema(Schema):
 class TokenResponseSchema(Schema):
     access_token: str = fields.Str(required=True)
     refresh_token: str = fields.Str(required=True)
+    # token_type is optional — login/signup don't always return it.
     token_type: str = fields.Str(
-        required=True,
-        default="bearer",
+        load_default="bearer",
+        dump_default="bearer",
         dump_only=True,
-        metadata={"default": "bearer"}
     )

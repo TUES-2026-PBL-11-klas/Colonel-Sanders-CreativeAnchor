@@ -1,6 +1,14 @@
 // src/upload.js - Main Dashboard Workspace Controller
 const API_URL = 'http://localhost:5002';
 
+// Fix #2: Escape HTML special characters before injecting any server/user data
+// into innerHTML to prevent XSS attacks.
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(String(str ?? '')));
+    return div.innerHTML;
+}
+
 let activeDrawingId = null;
 let currentDeviceId = null;
 let watchFolder = null;
@@ -219,7 +227,8 @@ function renderGalleryGrid() {
         // Preview Render: Check if thumbnail exists, else render robust blocky file-type fallbacks (No Emojis!)
         let previewHtml = '';
         if (file.thumbnailPath) {
-            previewHtml = `<img class="art-card-img" src="${API_URL}/${file.thumbnailPath}" alt="${file.fileName}">`;
+            // Fix #2: Escape the path and filename used in src/alt attributes.
+            previewHtml = `<img class="art-card-img" src="${escapeHtml(API_URL)}/${escapeHtml(file.thumbnailPath)}" alt="${escapeHtml(file.fileName)}">`;
         } else {
             let fallbackClass = 'ext-other';
             let iconText = ext.toUpperCase();
@@ -254,25 +263,25 @@ function renderGalleryGrid() {
             ${previewHtml}
         </div>
         <div class="art-card-body">
-            <h4 class="art-card-title">${file.fileName}</h4>
+            <h4 class="art-card-title">${escapeHtml(file.fileName)}</h4>
             <div class="art-card-meta-grid">
                 <div class="art-card-meta-item">
                     <span class="art-card-meta-label">INVESTED TIME</span>
-                    <span class="art-card-meta-val">${hours} hours</span>
+                    <span class="art-card-meta-val">${escapeHtml(hours)} hours</span>
                 </div>
                 <div class="art-card-meta-item">
                     <span class="art-card-meta-label">CREATED</span>
-                    <span class="art-card-meta-val">${createdDate}</span>
+                    <span class="art-card-meta-val">${escapeHtml(createdDate)}</span>
                 </div>
                 <!-- REAL LAST SAVE (LAST WORKED ON) DATE -->
                 <div class="art-card-meta-item">
                     <span class="art-card-meta-label">LAST SAVE (WORKED ON)</span>
-                    <span class="art-card-meta-val">${lastWorkedOnText}</span>
+                    <span class="art-card-meta-val">${escapeHtml(lastWorkedOnText)}</span>
                 </div>
                 <!-- LAST TIME VIEWED INSIDE ANCHOR VISUALIZER -->
                 <div class="art-card-meta-item" style="grid-column: 1 / -1; margin-top: 4px; border-top: 1px dashed #3A3530; padding-top: 4px;">
                     <span class="art-card-meta-label">LAST APP OPENED</span>
-                    <span class="art-card-meta-val" style="color: #A59E92;">${lastOpenedText}</span>
+                    <span class="art-card-meta-val" style="color: #A59E92;">${escapeHtml(lastOpenedText)}</span>
                 </div>
             </div>
         </div>
@@ -346,14 +355,23 @@ function renderChatHistory(messages) {
     }
 
     messages.forEach(msg => {
+        // Fix #2: Build the bubble with DOM APIs so no user/server content ever
+        // touches innerHTML.
         const bubble = document.createElement('div');
-        bubble.className = `message-bubble ${msg.sender}`;
+        // Whitelist the sender class to prevent class injection.
+        const senderClass = msg.sender === 'gemini' ? 'gemini' : 'user';
+        bubble.className = `message-bubble ${senderClass}`;
 
-        const authorName = msg.sender === 'gemini' ? 'Gemini Critique' : 'Me';
-        bubble.innerHTML = `
-            <div class="message-author ${msg.sender}">${authorName}</div>
-            <div style="white-space: pre-wrap; font-size: 13px; line-height: 1.5;">${msg.message}</div>
-        `;
+        const authorEl = document.createElement('div');
+        authorEl.className = `message-author ${senderClass}`;
+        authorEl.textContent = senderClass === 'gemini' ? 'Gemini Critique' : 'Me';
+
+        const bodyEl = document.createElement('div');
+        bodyEl.style.cssText = 'white-space: pre-wrap; font-size: 13px; line-height: 1.5;';
+        bodyEl.textContent = msg.message;  // textContent — never executed as HTML
+
+        bubble.appendChild(authorEl);
+        bubble.appendChild(bodyEl);
         thread.appendChild(bubble);
     });
 
@@ -373,14 +391,22 @@ async function handleSendChatMessage(event) {
     input.value = '';
 
     try {
-        // Optimistically render user message
+        // Fix #2: Build the optimistic user bubble using DOM APIs, not innerHTML,
+        // so the raw prompt string is never parsed as HTML.
         const thread = document.getElementById('chatHistory');
         const userBubble = document.createElement('div');
         userBubble.className = 'message-bubble user';
-        userBubble.innerHTML = `
-            <div class="message-author user">Me</div>
-            <div style="white-space: pre-wrap; font-size: 13px;">${prompt}</div>
-        `;
+
+        const authorEl = document.createElement('div');
+        authorEl.className = 'message-author user';
+        authorEl.textContent = 'Me';
+
+        const bodyEl = document.createElement('div');
+        bodyEl.style.cssText = 'white-space: pre-wrap; font-size: 13px;';
+        bodyEl.textContent = prompt;  // textContent — never executed as HTML
+
+        userBubble.appendChild(authorEl);
+        userBubble.appendChild(bodyEl);
         thread.appendChild(userBubble);
         thread.scrollTop = thread.scrollHeight;
 

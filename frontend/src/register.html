@@ -3,6 +3,13 @@
 
 <head>
     <meta charset="UTF-8">
+    <!-- Fix #4: Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self';
+                   script-src 'self' 'unsafe-inline';
+                   style-src 'self' 'unsafe-inline';
+                   img-src 'self' data:;
+                   connect-src 'self' http://localhost:5000 http://localhost:5002;">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Anchor - Create Workspace</title>
     <link rel="stylesheet" href="styles.css">
@@ -74,9 +81,10 @@
                     Create Workspace
                 </button>
             </form>
+            <!-- Fix #3: Route through the IPC guard instead of bare href. -->
             <p class="login-note" style="margin-top: 25px; font-size: 13px; text-align: center; color: #A59E92;">
-                Already have a workspace? <a href="login.html"
-                    style="color: #FF6200; text-decoration: none; font-weight: 700;">Login here</a>
+                Already have a workspace? <span onclick="goToPage('login.html')"
+                    style="color: #FF6200; text-decoration: none; font-weight: 700; cursor: pointer;">Login here</span>
             </p>
         </div>
     </div>

@@ -3,7 +3,32 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const Store = require('electron-store').default;
 
-const store = new Store();
+// Fix #8: Encrypt store so tokens/PII are not stored in plaintext on disk.
+const store = new Store({
+    encryptionKey: 'creative-anchor-secure-store-v1',
+});
+
+// Fix #1: Parse a JWT payload without a third-party library.
+function parseJwtPayload(token) {
+    try {
+        const base64Payload = token.split('.')[1];
+        if (!base64Payload) return null;
+        const decoded = Buffer.from(base64Payload, 'base64').toString('utf8');
+        return JSON.parse(decoded);
+    } catch {
+        return null;
+    }
+}
+
+// Fix #1: Returns true when the token is missing, malformed, or past its exp claim.
+function isTokenExpiredOrInvalid(token) {
+    if (!token || typeof token !== 'string') return true;
+    const payload = parseJwtPayload(token);
+    if (!payload) return true;
+    // If the token carries no exp claim treat it as perpetually invalid.
+    if (!payload.exp) return true;
+    return Math.floor(Date.now() / 1000) >= payload.exp;
+}
 let mainWindow;
 
 app.disableHardwareAcceleration();
@@ -60,12 +85,14 @@ ipcMain.handle('navigate', (event, page) => {
         // Protected pages that require authentication
         const protectedPages = ['dashboard.html', 'upload.html'];
 
-        // Check if navigating to a protected page
+        // Fix #1: Validate the token exists AND has not expired before granting access.
         if (protectedPages.includes(page)) {
             const accessToken = store.get('access_token');
 
-            // If no access token, redirect to login
-            if (!accessToken) {
+            if (isTokenExpiredOrInvalid(accessToken)) {
+                // Clear any stale tokens and redirect to login.
+                store.delete('access_token');
+                store.delete('refresh_token');
                 mainWindow.loadFile(path.join('src', 'login.html'));
                 return;
             }

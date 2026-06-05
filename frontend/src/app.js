@@ -13,6 +13,10 @@ function navigateTo(page) {
     window.electronAPI.navigate(page);
 }
 
+// Fix #3: Expose safe IPC-based navigation globally so HTML onclick attributes
+// (and auth-page links) never need bare <a href> tags that bypass the guard.
+window.goToPage = (page) => navigateTo(page);
+
 // Window controls global integration
 window.minimizeWindow = () => {
     if (window.electronAPI && window.electronAPI.minimize) {
@@ -41,6 +45,28 @@ if (window.electronAPI && window.electronAPI.onMaximizedState) {
             document.body.classList.remove('window-maximized');
         }
     });
+}
+
+// Fix #1: Parse the JWT payload in the renderer so we can check expiry locally.
+// The real enforcement is in main.js (IPC handler); this is a defence-in-depth check.
+function parseJwtPayload(token) {
+    try {
+        const base64Payload = token.split('.')[1];
+        if (!base64Payload) return null;
+        // atob is available in Electron's renderer / Chromium context.
+        const decoded = atob(base64Payload.replace(/-/g, '+').replace(/_/g, '/'));
+        return JSON.parse(decoded);
+    } catch {
+        return null;
+    }
+}
+
+function isTokenExpiredOrInvalid(token) {
+    if (!token || typeof token !== 'string') return true;
+    const payload = parseJwtPayload(token);
+    if (!payload) return true;
+    if (!payload.exp) return true;
+    return Math.floor(Date.now() / 1000) >= payload.exp;
 }
 
 // Input validation
@@ -74,9 +100,8 @@ async function handleLogin(event) {
 
         try {
             data = await response.json();
-        } catch (parseError) {
-            console.error('Failed to parse response:', parseError);
-            errorDiv.textContent = 'Server returned invalid data. Please check the backend.';
+        } catch {
+            errorDiv.textContent = 'Something went wrong. Please try again.';
             errorDiv.style.display = 'block';
             return;
         }
@@ -86,12 +111,11 @@ async function handleLogin(event) {
             await store.set('userEmail', email);
             navigateTo('dashboard.html');
         } else {
-            errorDiv.textContent = data.message || 'Login failed. Please check your credentials.';
+            errorDiv.textContent = 'Invalid email or password.';
             errorDiv.style.display = 'block';
         }
-    } catch (error) {
-        console.error('Login error:', error);
-        errorDiv.textContent = 'Could not reach the server. Please make sure the backend is running.';
+    } catch {
+        errorDiv.textContent = 'Something went wrong. Please try again.';
         errorDiv.style.display = 'block';
     } finally {
         loginBtn.disabled = false;
@@ -121,8 +145,25 @@ async function handleRegister(event) {
         errorDiv.style.display = 'block';
         return;
     }
-    if (password.length < 6) {
-        errorDiv.textContent = 'Password must be at least 6 characters long.';
+
+    // Fix #7: Enforce a meaningful password policy.
+    if (password.length < 8) {
+        errorDiv.textContent = 'Password must be at least 8 characters long.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    if (!/[A-Z]/.test(password)) {
+        errorDiv.textContent = 'Password must contain at least one uppercase letter.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    if (!/[0-9]/.test(password)) {
+        errorDiv.textContent = 'Password must contain at least one number.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    if (!/[^A-Za-z0-9]/.test(password)) {
+        errorDiv.textContent = 'Password must contain at least one special character.';
         errorDiv.style.display = 'block';
         return;
     }
@@ -136,9 +177,8 @@ async function handleRegister(event) {
 
         try {
             data = await response.json();
-        } catch (parseError) {
-            console.error('Failed to parse response:', parseError);
-            errorDiv.textContent = 'Server returned invalid data. Please check the backend.';
+        } catch {
+            errorDiv.textContent = 'Something went wrong. Please try again.';
             errorDiv.style.display = 'block';
             return;
         }
@@ -147,12 +187,11 @@ async function handleRegister(event) {
             document.getElementById('registerForm').reset();
             navigateTo('login.html');
         } else {
-            errorDiv.textContent = data.message || 'Registration failed. Please try again.';
+            errorDiv.textContent = 'Registration failed. Please try again.';
             errorDiv.style.display = 'block';
         }
-    } catch (error) {
-        console.error('Registration error:', error);
-        errorDiv.textContent = 'Could not reach the server. Please make sure the backend is running.';
+    } catch {
+        errorDiv.textContent = 'Something went wrong. Please try again.';
         errorDiv.style.display = 'block';
     } finally {
         registerBtn.disabled = false;
@@ -173,10 +212,17 @@ async function handleLogout() {
 
 window.handleLogout = handleLogout;
 
-// Route guard
+// Fix #1: Route guard — check both existence AND expiry of the access token.
 async function checkLoginStatus() {
     const currentPage = window.location.pathname.split('/').pop();
-    const isLoggedIn = Boolean(await getAccessToken());
+    const token = await getAccessToken();
+    const isLoggedIn = token && !isTokenExpiredOrInvalid(token);
+
+    // If the token is present but expired, clean it up proactively.
+    if (token && !isLoggedIn) {
+        await clearTokens();
+    }
+
     const authPages = new Set(['login.html', 'register.html']);
     const protectedPages = new Set(['dashboard.html']);
 
