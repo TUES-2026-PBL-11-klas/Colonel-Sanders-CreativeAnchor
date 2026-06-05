@@ -44,5 +44,9 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 Thumbs.db
 ehthumbs.db
 Desktop.ini
-
 signing_keys.json
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
