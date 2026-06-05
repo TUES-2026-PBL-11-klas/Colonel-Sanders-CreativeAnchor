@@ -51,17 +51,17 @@
                 style="font-size: 18px; font-weight: 600; margin-bottom: 25px; color: #EAE6DF; text-align: center; text-transform: uppercase; letter-spacing: 0.5px;">
                 Artist Login</h2>
 
-            <form id="loginForm" onsubmit="handleLogin(event)">
+            <form id="loginForm">
                 <div class="form-group" style="margin-bottom: 20px;">
-                    <label for="username" class="config-label">Email</label>
-                    <input type="text" id="username" class="config-input" placeholder="e.g. CreativeArtist@gmail.com"
+                    <label for="email" class="config-label">Email</label>
+                    <input type="text" id="email" class="config-input" placeholder="e.g. CreativeArtist@gmail.com"
                         required>
                 </div>
                 <div class="form-group" style="margin-bottom: 25px;">
                     <label for="password" class="config-label">Password</label>
                     <input type="password" id="password" class="config-input" placeholder="••••••••" required>
                 </div>
-                <button type="submit" class="block-btn" style="width: 100%; padding: 14px;">
+                <button type="submit" id="loginBtn" class="block-btn" style="width: 100%; padding: 14px;">
                     Access Workspace
                 </button>
             </form>

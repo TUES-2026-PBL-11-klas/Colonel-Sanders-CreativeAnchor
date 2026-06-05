@@ -45,6 +45,36 @@ ipcMain.handle('open-folder-dialog', async () => {
     return result.filePaths.length > 0 ? result.filePaths[0] : null;
 });
 
+// IPC handlers for Electron Store and navigation
+ipcMain.handle('store:get', (event, key) => {
+    return store.get(key);
+});
+ipcMain.handle('store:set', (event, key, value) => {
+    store.set(key, value);
+});
+ipcMain.handle('store:delete', (event, key) => {
+    store.delete(key);
+});
+ipcMain.handle('navigate', (event, page) => {
+    if (mainWindow) {
+        // Protected pages that require authentication
+        const protectedPages = ['dashboard.html', 'upload.html'];
+
+        // Check if navigating to a protected page
+        if (protectedPages.includes(page)) {
+            const accessToken = store.get('access_token');
+
+            // If no access token, redirect to login
+            if (!accessToken) {
+                mainWindow.loadFile(path.join('src', 'login.html'));
+                return;
+            }
+        }
+
+        mainWindow.loadFile(path.join('src', page));
+    }
+});
+
 // Window control events received from renderer process
 ipcMain.on('window-minimize', () => {
     if (mainWindow) mainWindow.minimize();

@@ -1,5 +1,5 @@
 // src/upload.js - Main Dashboard Workspace Controller
-const API_URL = 'http://localhost:5000';
+const API_URL = 'http://localhost:5002';
 
 let activeDrawingId = null;
 let currentDeviceId = null;
@@ -16,19 +16,22 @@ async function loadSettings() {
     try {
         const res = await fetch(`${API_URL}/api/settings`);
         const data = await res.json();
-        
+
         watchFolder = data.watchFolder;
         currentDeviceId = data.currentDeviceId;
 
         document.getElementById('currentWatchFolderLabel').innerText = watchFolder;
         document.getElementById('deviceWidgetId').innerText = currentDeviceId;
 
-        // Render user details based on localStorage
-        const username = localStorage.getItem('username') || 'Artist';
-        document.getElementById('userName').innerText = username;
-        document.getElementById('userAvatar').innerText = username.charAt(0).toUpperCase();
-        document.getElementById('dockAvatar').innerText = username.charAt(0).toUpperCase();
-        document.getElementById('userEmail').innerText = `${username.toLowerCase().replace(/\s+/g, '')}@creativeanchor.com`;
+        // Render user details based on Electron store
+        const email = await window.electronAPI.store.get('userEmail') || '';
+        const username = email ? email.split('@')[0] : 'Artist';
+        const capitalizedUsername = username.charAt(0).toUpperCase() + username.slice(1);
+
+        document.getElementById('userName').innerText = capitalizedUsername;
+        document.getElementById('userAvatar').innerText = capitalizedUsername.charAt(0).toUpperCase();
+        document.getElementById('dockAvatar').innerText = capitalizedUsername.charAt(0).toUpperCase();
+        document.getElementById('userEmail').innerText = email;
 
         // Refresh database gallery grid
         await refreshGallery();
@@ -54,13 +57,16 @@ function closeChangeFolderModal() {
 async function openFolderDialog() {
     try {
         const folderPath = await window.electronAPI.openFolderDialog();
-        if (folderPath) {
-            // Update the displayed path and enable the confirm button
-            document.getElementById('selectedFolderText').innerText = folderPath;
-            document.getElementById('confirmScanBtn').disabled = false;
-            // Store temporarily for saving
-            selectedFolderPath = folderPath;
+        if (!folderPath) {
+            // User cancelled the dialog or no path returned
+            alert('No folder selected.');
+            return;
         }
+        // Update the displayed path and enable the confirm button
+        document.getElementById('selectedFolderText').innerText = folderPath;
+        document.getElementById('confirmScanBtn').disabled = false;
+        // Store temporarily for saving
+        selectedFolderPath = folderPath;
     } catch (error) {
         console.error('Error opening folder dialog:', error);
         alert('Failed to open folder dialog');
@@ -70,34 +76,43 @@ async function openFolderDialog() {
 async function saveModalWatchFolderSettings() {
     const pathValue = selectedFolderPath || watchFolder;
     if (!pathValue) {
-        alert("Please select a valid folder");
+        alert('Please select a valid folder before saving.');
         return;
     }
-
     try {
         const res = await fetch(`${API_URL}/api/settings/watch-folder`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ watchFolder: pathValue })
         });
+        if (!res.ok) {
+            const errText = await res.text();
+            alert(`Failed to update folder (status ${res.status}): ${errText}`);
+            return;
+        }
         const data = await res.json();
+        if (!data || typeof data.success === 'undefined') {
+            alert('Unexpected response from server when updating folder.');
+            console.error('Response data:', data);
+            return;
+        }
         if (data.success) {
             watchFolder = data.settings.watchFolder;
             selectedFolderPath = null; // Reset temporary selection
             document.getElementById('currentWatchFolderLabel').innerText = watchFolder;
             closeChangeFolderModal();
-            
+
             // Refresh database gallery grid
             await refreshGallery();
             await checkBurnoutAlerts();
-            
-            alert("Success: Directory changed, scanning folder contents now");
+
+            alert('Success: Directory changed, scanning folder contents now');
         } else {
             alert(`Error: ${data.error}`);
         }
     } catch (e) {
         console.error(e);
-        alert("Failed to update folder. Make sure the local server is running.");
+        alert('Failed to update folder. Make sure the local server is running.');
     }
 }
 
@@ -151,15 +166,15 @@ function renderGalleryGrid() {
 
     drawings.forEach(file => {
         const ext = file.fileName.split('.').pop().toLowerCase();
-        
+
         // Check if this file origin matches current device to evaluate "Master" status
         const isMasterCopy = file.status === 'SYNCED' && file.deviceOrigin === currentDeviceId;
-        
+
         // 1. Format CREATED date
-        const createdDate = new Date(file.createdAt).toLocaleDateString(undefined, { 
-            month: 'short', 
-            day: 'numeric', 
-            year: '2-digit' 
+        const createdDate = new Date(file.createdAt).toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            year: '2-digit'
         });
 
         // 2. Format & Calculate REAL "LAST SAVE (LAST WORKED ON)" (from file.updatedAt)
@@ -180,11 +195,11 @@ function renderGalleryGrid() {
         let lastOpenedText = "Never";
         if (file.accessedAt) {
             const lastOpenedDate = new Date(file.accessedAt);
-            lastOpenedText = lastOpenedDate.toLocaleDateString(undefined, { 
-                month: 'short', 
-                day: 'numeric', 
-                hour: '2-digit', 
-                minute: '2-digit' 
+            lastOpenedText = lastOpenedDate.toLocaleDateString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
             });
         }
 
@@ -208,13 +223,13 @@ function renderGalleryGrid() {
         } else {
             let fallbackClass = 'ext-other';
             let iconText = ext.toUpperCase();
-            
+
             if (ext === 'clip') { fallbackClass = 'ext-clip'; }
             else if (ext === 'psd') { fallbackClass = 'ext-psd'; }
             else if (ext === 'kra') { fallbackClass = 'ext-kra'; }
             else if (ext === 'sai') { fallbackClass = 'ext-sai'; }
             else if (ext === 'procreate') { fallbackClass = 'ext-procreate'; }
-            
+
             previewHtml = `
                 <div class="art-card-fallback ${fallbackClass}">
                     ${iconText}
@@ -281,7 +296,7 @@ async function selectDrawingCard(id) {
         // Trigger access update on backend
         const accessRes = await fetch(`${API_URL}/api/gallery/${id}/access`, { method: 'POST' });
         const accessData = await accessRes.json();
-        
+
         // Refresh local array and grid with new last-opened date
         const idx = drawings.findIndex(d => d.id === id);
         if (idx !== -1) {
@@ -298,7 +313,7 @@ async function selectDrawingCard(id) {
         // Update headers (No Emojis!)
         document.getElementById('chatHeaderTitle').innerText = file.fileName;
         document.getElementById('chatHeaderSub').innerText = `Invested effort: ${file.hoursSpent.toFixed(1)} hours | Status: ${file.status}`;
-        
+
         // Show controls
         document.getElementById('cloudSyncBtn').style.display = 'block';
         document.getElementById('chatComposer').style.display = 'flex';
@@ -333,7 +348,7 @@ function renderChatHistory(messages) {
     messages.forEach(msg => {
         const bubble = document.createElement('div');
         bubble.className = `message-bubble ${msg.sender}`;
-        
+
         const authorName = msg.sender === 'gemini' ? 'Gemini Critique' : 'Me';
         bubble.innerHTML = `
             <div class="message-author ${msg.sender}">${authorName}</div>
@@ -356,7 +371,7 @@ async function handleSendChatMessage(event) {
     if (!prompt) return;
 
     input.value = '';
-    
+
     try {
         // Optimistically render user message
         const thread = document.getElementById('chatHistory');
@@ -376,7 +391,7 @@ async function handleSendChatMessage(event) {
             body: JSON.stringify({ customPrompt: prompt })
         });
         const data = await res.json();
-        
+
         if (data.success) {
             // Load fresh chat history
             const chatRes = await fetch(`${API_URL}/api/gallery/${activeDrawingId}/chat`);
@@ -392,7 +407,7 @@ async function handleSendChatMessage(event) {
 // 8. Trigger Optional cloud sync
 async function triggerOptionalCloudSync() {
     if (!activeDrawingId) return;
-    
+
     try {
         const res = await fetch(`${API_URL}/api/gallery/${activeDrawingId}/sync`, { method: 'POST' });
         const data = await res.json();
@@ -414,7 +429,7 @@ async function checkBurnoutAlerts() {
     try {
         const res = await fetch(`${API_URL}/api/gallery/burnout-check?testIntervalMs=10000`);
         const data = await res.json();
-        
+
         const banner = document.getElementById('burnoutAlertBanner');
         const text = document.getElementById('burnoutAlertMessage');
 

@@ -8,7 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
 
     navigate: (page) => ipcRenderer.invoke('navigate', page),
-    
+
     openFolderDialog: () => ipcRenderer.invoke('open-folder-dialog'),
 
     minimize: () => ipcRenderer.send('window-minimize'),
