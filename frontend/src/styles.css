@@ -869,22 +869,33 @@ h1, h2, h3, .brand-serif {
 .message-bubble {
     padding: 15px;
     border-radius: 4px;
-    border: 2.5px solid #3C3935;
-    max-width: 85%;
-    box-shadow: 2px 2px 0px #131211;
     line-height: 1.45;
-    font-size: 13.5px;
+    font-size: 15px;
+    max-width: 85%;
 }
 
 .message-bubble.user {
-    background-color: #22201D;
+    background-color: #131211;
     align-self: flex-end;
+    border: 2.5px solid #3C3935;
+    box-shadow: 2px 2px 0px #0A0909;
 }
 
 .message-bubble.gemini {
-    background-color: #2A1F1B; /* Warm orange tint */
-    border-color: #FF6200;
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
     align-self: flex-start;
+    padding: 10px 0;
+    max-width: 100%;
+}
+
+.message-bubble.gemini.temp-loading {
+    background-color: #22201D;
+    border: 2.5px solid #3C3935;
+    box-shadow: 2px 2px 0px #131211;
+    padding: 15px;
+    max-width: 85%;
 }
 
 .message-author {
@@ -911,7 +922,7 @@ h1, h2, h3, .brand-serif {
     background-color: #1E1C1A;
     outline: none;
     font-family: inherit;
-    font-size: 13.5px;
+    font-size: 15px;
     border-radius: 4px;
     color: #EAE6DF;
     box-shadow: 2px 2px 0px #131211;
@@ -985,4 +996,240 @@ h1, h2, h3, .brand-serif {
 /* Custom completely-hidden state when no drawing is active */
 .workspace-right-chat.completely-hidden {
     display: none !important;
+}
+
+/* ----------------------------------------------------
+   ANIMATED LOADING DOTS
+   ---------------------------------------------------- */
+.dots-loader {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 12px;
+    vertical-align: middle;
+}
+
+.dots-loader span {
+    width: 6px;
+    height: 6px;
+    background-color: currentColor;
+    border-radius: 50%;
+    display: inline-block;
+    animation: dots-flash 1.4s infinite both;
+}
+
+.dots-loader span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.dots-loader span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes dots-flash {
+    0%, 80%, 100% {
+        opacity: 0.2;
+    }
+    40% {
+        opacity: 1;
+    }
+}
+
+.dots-loader-container {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 4px 0;
+}
+
+/* ----------------------------------------------------
+   PRETTY CRITIQUE STYLING (JSON renderer)
+   ---------------------------------------------------- */
+.critique-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+
+.critique-meta-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1.5px solid #3C3935;
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.critique-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.critique-meta-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #A59E92;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.critique-meta-val {
+    font-size: 15px;
+    color: #EAE6DF;
+}
+
+.critique-trigger-box {
+    background: rgba(255, 98, 0, 0.08);
+    border-left: 3px solid #FF6200;
+    padding: 10px 12px;
+    border-radius: 2px;
+    font-size: 12.5px;
+    margin-top: 4px;
+}
+
+.critique-trigger-box strong {
+    color: #FF6200;
+    display: block;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+}
+
+.critique-section-title {
+    font-family: 'Lora', Georgia, serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: #F5F2EB;
+    border-bottom: 2px solid #3C3935;
+    padding-bottom: 6px;
+    margin-top: 10px;
+}
+
+.critique-audit-item {
+    border: 2px solid #3C3935;
+    border-radius: 4px;
+    padding: 12px;
+    background: #1A1917;
+}
+
+.critique-audit-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.critique-audit-category {
+    font-size: 10px;
+    font-weight: 700;
+    color: #FF6200;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+.critique-audit-issue {
+    font-size: 16px;
+    font-weight: 700;
+    color: #F5F2EB;
+}
+
+.critique-audit-context {
+    font-size: 11px;
+    color: #8C877E;
+    margin-bottom: 8px;
+    font-style: italic;
+}
+
+.critique-audit-desc {
+    font-size: 15px;
+    line-height: 1.5;
+    color: #EAE6DF;
+    margin-bottom: 8px;
+}
+
+.critique-burnout-connection {
+    background: rgba(200, 90, 62, 0.12);
+    border-left: 3px solid #C85A3E;
+    padding: 8px 10px;
+    border-radius: 2px;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.critique-burnout-connection strong {
+    color: #E58A75;
+}
+
+.critique-insight-box {
+    background: #22201D;
+    border: 2px solid #3C3935;
+    border-radius: 4px;
+    padding: 15px;
+    box-shadow: 2px 2px 0px #131211;
+}
+
+.critique-insight-box h4 {
+    font-family: 'Lora', Georgia, serif;
+    font-size: 15px;
+    color: #F5F2EB;
+    margin-bottom: 8px;
+}
+
+.critique-insight-box p {
+    font-size: 15px;
+    line-height: 1.5;
+    color: #A59E92;
+}
+
+.critique-action-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.critique-action-step {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.critique-step-num {
+    background: #FF6200;
+    color: #FFFFFF;
+    font-weight: 700;
+    font-size: 12px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.critique-step-content {
+    flex: 1;
+}
+
+.critique-step-text {
+    font-size: 15px;
+    line-height: 1.5;
+    color: #EAE6DF;
+    margin-bottom: 4px;
+}
+
+.critique-step-benefit {
+    font-size: 14px;
+    color: #4CA8A8;
+}
+
+.critique-step-benefit strong {
+    text-transform: uppercase;
+    font-size: 9px;
+    letter-spacing: 0.5px;
 }

@@ -12,6 +12,7 @@
     "chokidar": "^3.6.0",
     "clipstudio": "^0.1.1",
     "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
     "express": "^4.19.2",
     "jimp": "^0.22.12",
     "multer": "^1.4.5-lts.1",

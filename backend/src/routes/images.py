@@ -12,7 +12,7 @@ blp = Blueprint("Images", "images", description="Images endpoints.")
 @blp.route("/images", methods=["POST"])
 @blp.doc(security=[{"BearerAuth": []}])
 @require_auth
-def uploadImage():   
+def uploadImage():
     if "image" not in request.files:
         return jsonify({'error': 'File not found in request.'}), 400
     if "thumbnail" not in request.files:
@@ -21,11 +21,14 @@ def uploadImage():
     image = request.files["image"]
     thumbnail = request.files["thumbnail"]
 
-    file_uuid = uuid.uuid4()
-    filename = f'{file_uuid}'
-    upload_image_thumbnail(image, thumbnail, filename, g.sub_uuid)
-
-    return jsonify({"file_uuid": filename})
+    try:
+        file_uuid = uuid.uuid4()
+        filename = f'{file_uuid}'
+        upload_image_thumbnail(image, thumbnail, filename, g.sub_uuid)
+        return jsonify({"file_uuid": filename})
+    except Exception as e:
+        print(f"[UPLOAD ERROR] {type(e).__name__}: {e}")
+        return jsonify({'error': f'Storage upload failed: {str(e)}'}), 500
 
 @blp.route("/images/metadata", methods=["POST"])
 @blp.doc(security=[{"BearerAuth": []}])

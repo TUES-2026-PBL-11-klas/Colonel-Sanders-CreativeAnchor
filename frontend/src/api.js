@@ -9,7 +9,7 @@ const log = (...args) => { if (DEBUG) console.log(...args); };
 // Note: no trailing slash — endpoints are always absolute paths (e.g. '/login')
 // so new URL('/login', base) works correctly and template literals don't
 // accidentally produce double slashes (e.g. 'http://host//refresh').
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = window.electronAPI?.env?.API_BASE_URL || 'http://localhost:5000';
 
 // ── Token storage IPC helpers ─────────────────────────────────────────────────
 const getAccessToken = () =>

@@ -3,13 +3,12 @@
 
 <head>
     <meta charset="UTF-8">
-    <!-- Fix #4: Content Security Policy -->
     <meta http-equiv="Content-Security-Policy"
           content="default-src 'self';
                    script-src 'self' 'unsafe-inline';
                    style-src 'self' 'unsafe-inline';
-                   img-src 'self' data: http://localhost:5002;
-                   connect-src 'self' http://localhost:5000 http://localhost:5002;">
+                   img-src 'self' data: http: https:;
+                   connect-src 'self' http: https:;">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="styles.css">
@@ -89,10 +88,15 @@
                             Change Workspace
                         </button>
 
-                        <!-- Trigger Sync/Check manually -->
-                        <button onclick="triggerManualBurnoutCheck()" class="block-btn block-btn-secondary"
+                        <!-- Manual Refresh & Clear Local Cache -->
+                        <button onclick="triggerManualRefresh()" class="block-btn block-btn-secondary"
                             style="margin-bottom: 10px; width: 100%;">
-                            Check Stagnation
+                            Manual Refresh
+                        </button>
+
+                        <button onclick="triggerClearLocalCache()" class="block-btn block-btn-secondary"
+                            style="margin-bottom: 25px; width: 100%; color: #FF6200; border-color: #3C3935;">
+                            Clear Local Cache
                         </button>
                     </div>
 
@@ -193,13 +197,26 @@
                         </div>
                     </div>
 
+                    <!-- Fight Burnout Section: shown when an image is selected but has no chat history yet -->
+                    <div id="fightBurnoutSection"
+                        style="display: none; flex-direction: column; align-items: center; justify-content: center; flex: 1; padding: 30px 24px; gap: 24px; text-align: center;">
+                        <div style="max-width: 280px;">
+                            <h3 style="font-family: 'Lora', Georgia, serif; font-weight: 700; font-size: 20px; color: #F5F2EB; margin: 0 0 12px;">Feeling burned out?</h3>
+                            <p style="font-family: 'Inter', sans-serif; font-size: 13px; color: #A59E92; line-height: 1.6; margin: 0;">Let our AI model analyze your work and highlight what's wrong to help you push through creative blocks.</p>
+                        </div>
+                        <button id="fightBurnoutBtn" onclick="triggerFightBurnout()" class="block-btn"
+                            style="width: 100%; max-width: 280px; padding: 14px 0; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">
+                            Fight Burnout
+                        </button>
+                    </div>
+
                     <!-- Chat Composer Form -->
                     <form id="chatComposer" class="chat-composer" onsubmit="handleSendChatMessage(event)"
                         style="display: none;">
                         <input type="text" id="chatInput" class="chat-input"
-                            placeholder="Ask Gemini to critique your lighting, anatomy or composition..." required>
+                            placeholder="Ask Anchor about your lighting, anatomy or composition..." required>
                         <button type="submit" class="block-btn" style="width: auto; padding: 0 18px;">
-                            Ask Gemini
+                            Anchor
                         </button>
                     </form>
                 </div>

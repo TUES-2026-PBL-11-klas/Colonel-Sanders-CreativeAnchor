@@ -1,5 +1,5 @@
 // src/upload.js - Main Dashboard Workspace Controller
-const API_URL = 'http://localhost:5002';
+const API_URL = window.electronAPI?.env?.LOCAL_BACKEND_URL || 'http://localhost:5002';
 
 // Fix #2: Escape HTML special characters before injecting any server/user data
 // into innerHTML to prevent XSS attacks.
@@ -7,6 +7,58 @@ function escapeHtml(str) {
     const div = document.createElement('div');
     div.appendChild(document.createTextNode(String(str ?? '')));
     return div.innerHTML;
+}
+
+// Returns true if a JWT is expired or within 60 seconds of expiry.
+function _isTokenExpired(token) {
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return !payload.exp || Math.floor(Date.now() / 1000) >= payload.exp - 60;
+    } catch {
+        return true;
+    }
+}
+
+// Silently refreshes the access token using the stored refresh token.
+// Returns the new access token string, or null if refresh fails.
+async function _refreshAccessToken() {
+    try {
+        const refreshToken = await window.electronAPI.store.get('refresh_token');
+        if (!refreshToken) return null;
+
+        const pythonApiUrl = window.electronAPI?.env?.API_BASE_URL || 'http://localhost:5000';
+        const res = await fetch(`${pythonApiUrl}/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+        if (!res.ok) return null;
+
+        const data = await res.json();
+        if (!data.access_token) return null;
+
+        await window.electronAPI.store.set('access_token', data.access_token);
+        if (data.refresh_token) {
+            await window.electronAPI.store.set('refresh_token', data.refresh_token);
+        }
+        return data.access_token;
+    } catch {
+        return null;
+    }
+}
+
+// Auth helper — reads the stored token, silently refreshes it if expired or
+// within 60 seconds of expiry, so Flask never sees a stale JWT.
+async function getAuthHeader() {
+    try {
+        let token = await window.electronAPI.store.get('access_token');
+        if (!token || _isTokenExpired(token)) {
+            token = await _refreshAccessToken();
+        }
+        return token ? `Bearer ${token}` : null;
+    } catch {
+        return null;
+    }
 }
 
 let activeDrawingId = null;
@@ -290,7 +342,7 @@ function renderGalleryGrid() {
     });
 }
 
-// 5. Click a drawing card to inspect details, update access timestamp, and load chat logs
+// 5. Click a drawing card — update access timestamp, then show Fight Burnout or chat
 async function selectDrawingCard(id) {
     activeDrawingId = id;
     renderGalleryGrid(); // redraw selected border
@@ -302,8 +354,16 @@ async function selectDrawingCard(id) {
     }
 
     try {
-        // Trigger access update on backend
-        const accessRes = await fetch(`${API_URL}/api/gallery/${id}/access`, { method: 'POST' });
+        // Forward the auth token so the local backend can pass it to Flask
+        const authHeader = await getAuthHeader();
+        const accessHeaders = {};
+        if (authHeader) accessHeaders['Authorization'] = authHeader;
+
+        // Trigger access update on backend (may fire async critique if file changed)
+        const accessRes = await fetch(`${API_URL}/api/gallery/${id}/access`, {
+            method: 'POST',
+            headers: accessHeaders,
+        });
         const accessData = await accessRes.json();
 
         // Refresh local array and grid with new last-opened date
@@ -319,24 +379,246 @@ async function selectDrawingCard(id) {
         const chatRes = await fetch(`${API_URL}/api/gallery/${id}/chat`);
         const chatData = await chatRes.json();
 
-        // Update headers (No Emojis!)
+        // Update chat panel header
         document.getElementById('chatHeaderTitle').innerText = file.fileName;
         document.getElementById('chatHeaderSub').innerText = `Invested effort: ${file.hoursSpent.toFixed(1)} hours | Status: ${file.status}`;
-
-        // Show controls
         document.getElementById('cloudSyncBtn').style.display = 'block';
-        document.getElementById('chatComposer').style.display = 'flex';
+        const hasChatHistory = chatData.history && chatData.history.length > 0;
+        const fightSection = document.getElementById('fightBurnoutSection');
+        const composer = document.getElementById('chatComposer');
 
-        // Render chat history
-        renderChatHistory(chatData.history);
+        if (hasChatHistory) {
+            // Already has AI messages — show them and the composer directly
+            fightSection.style.display = 'none';
+            document.getElementById('chatHistory').style.display = 'flex';
+            composer.style.display = 'flex';
+            renderChatHistory(chatData.history);
+        } else {
+            // No history yet — show the Fight Burnout CTA, hide composer
+            fightSection.style.display = 'flex';
+            document.getElementById('chatHistory').style.display = 'none';
+            const btn = document.getElementById('fightBurnoutBtn');
+            btn.disabled = false;
+            btn.innerHTML = 'Fight Burnout';
+            composer.style.display = 'none';
+            // Clear any leftover messages from a previous selection
+            document.getElementById('chatHistory').innerHTML = '';
+        }
 
-        // If chat panel was collapsed, automatically expand it to show the history! Excellent UX!
-        if (chatCollapsed) {
-            toggleRightChat();
+        // Force the right chat panel to expand (remove collapsed state)
+        chatCollapsed = false;
+        const chatPanelEl = document.getElementById('chatPanel');
+        if (chatPanelEl) {
+            chatPanelEl.classList.remove('collapsed');
+            chatPanelEl.classList.remove('completely-hidden');
         }
     } catch (e) {
         console.error("Failed to select drawing:", e);
     }
+}
+
+// 5a. Fight Burnout — silently triggers the first AI critique.
+//     No user message is shown; the chat opens with only the AI's response.
+async function triggerFightBurnout() {
+    if (!activeDrawingId) return;
+
+    const btn = document.getElementById('fightBurnoutBtn');
+    btn.disabled = true;
+    btn.innerHTML = 'Analyzing <span class="dots-loader"><span></span><span></span><span></span></span>';
+
+    try {
+        // Check if the async critique from /access already finished while the user was reading
+        const chatCheck = await fetch(`${API_URL}/api/gallery/${activeDrawingId}/chat`);
+        const chatCheckData = await chatCheck.json();
+
+        if (chatCheckData.history && chatCheckData.history.length > 0) {
+            // Async critique already landed — just display it
+            renderChatHistory(chatCheckData.history);
+        } else {
+            // Trigger a synchronous review with no visible user message
+            const authHeader = await getAuthHeader();
+            const headers = { 'Content-Type': 'application/json' };
+            if (authHeader) headers['Authorization'] = authHeader;
+
+            const res = await fetch(`${API_URL}/api/gallery/${activeDrawingId}/review`, {
+                method: 'POST',
+                headers,
+                // No customPrompt: server uses initial_prompt.txt
+                // skipUserMessage: AI response only — no user bubble in chat
+                body: JSON.stringify({ skipUserMessage: true }),
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || `HTTP ${res.status}`);
+            }
+
+            // Reload chat to render the AI's opening message
+            const chatRes = await fetch(`${API_URL}/api/gallery/${activeDrawingId}/chat`);
+            const chatData = await chatRes.json();
+            renderChatHistory(chatData.history);
+        }
+
+        // Transition: hide Fight Burnout, reveal composer and history
+        document.getElementById('fightBurnoutSection').style.display = 'none';
+        document.getElementById('chatHistory').style.display = 'flex';
+        document.getElementById('chatComposer').style.display = 'flex';
+        document.getElementById('chatInput').focus();
+
+    } catch (e) {
+        console.error('Fight Burnout error:', e);
+        btn.disabled = false;
+        btn.innerHTML = 'Fight Burnout';
+        alert(`AI Error: ${e.message}\n\nFull log: local-backend/ai_debug.log`);
+    }
+}
+
+// Helper to format JSON critiques nicely in the UI
+function formatCritiqueJson(data) {
+    const container = document.createElement('div');
+    container.className = 'critique-card';
+
+    // Format 1: Initial critique
+    // 1. Metadata
+    if (data.analysis_metadata) {
+        const meta = data.analysis_metadata;
+        const metaSec = document.createElement('div');
+        metaSec.className = 'critique-meta-section';
+        metaSec.innerHTML = `
+            <div class="critique-meta-item">
+                <span class="critique-meta-label">Medium</span>
+                <span class="critique-meta-val">${escapeHtml(meta.detected_medium)}</span>
+            </div>
+            <div class="critique-meta-item">
+                <span class="critique-meta-label">Primary Mood</span>
+                <span class="critique-meta-val">${escapeHtml(meta.primary_mood)}</span>
+            </div>
+            <div class="critique-trigger-box">
+                <strong>Burnout Trigger Summary</strong>
+                <p>${escapeHtml(meta.burnout_trigger_summary)}</p>
+            </div>
+        `;
+        container.appendChild(metaSec);
+    }
+
+    // 2. Technical Audit
+    if (data.technical_audit && data.technical_audit.length > 0) {
+        const auditHeader = document.createElement('h4');
+        auditHeader.className = 'critique-section-title';
+        auditHeader.textContent = 'Technical Audit';
+        container.appendChild(auditHeader);
+
+        data.technical_audit.forEach(item => {
+            const itemEl = document.createElement('div');
+            itemEl.className = 'critique-audit-item';
+            itemEl.innerHTML = `
+                <div class="critique-audit-header">
+                    <span class="critique-audit-category">${escapeHtml(item.category)}</span>
+                    <span class="critique-audit-issue">${escapeHtml(item.issue)}</span>
+                </div>
+                <div class="critique-audit-context">Context: ${escapeHtml(item.location_context)}</div>
+                <p class="critique-audit-desc">${escapeHtml(item.description)}</p>
+                <div class="critique-burnout-connection">
+                    <strong>Burnout Connection:</strong> ${escapeHtml(item.burnout_connection)}
+                </div>
+            `;
+            container.appendChild(itemEl);
+        });
+    }
+
+    // 3. Psychological Insight
+    if (data.psychological_insight) {
+        const insightSec = document.createElement('div');
+        insightSec.className = 'critique-insight-box';
+        insightSec.innerHTML = `
+            <h4>Psychological Insight</h4>
+            <p>${escapeHtml(data.psychological_insight)}</p>
+        `;
+        container.appendChild(insightSec);
+    }
+
+    // 4. Action Plan
+    if (data.action_plan && data.action_plan.length > 0) {
+        const planHeader = document.createElement('h4');
+        planHeader.className = 'critique-section-title';
+        planHeader.textContent = 'Action Plan';
+        container.appendChild(planHeader);
+
+        const planList = document.createElement('div');
+        planList.className = 'critique-action-list';
+        data.action_plan.forEach(step => {
+            const stepEl = document.createElement('div');
+            stepEl.className = 'critique-action-step';
+            stepEl.innerHTML = `
+                <div class="critique-step-num">${escapeHtml(step.step_number)}</div>
+                <div class="critique-step-content">
+                    <p class="critique-step-text">${escapeHtml(step.step)}</p>
+                    <p class="critique-step-benefit"><strong>Benefit:</strong> ${escapeHtml(step.benefit)}</p>
+                </div>
+            `;
+            planList.appendChild(stepEl);
+        });
+        container.appendChild(planList);
+    }
+
+    // Format 2: Follow-up response
+    if (data.critic_response) {
+        const cr = data.critic_response;
+        const metaSec = document.createElement('div');
+        metaSec.className = 'critique-meta-section';
+        
+        let content = '';
+        if (cr.vibe_impact_analysis) {
+            content += `
+                <div class="critique-meta-item">
+                    <span class="critique-meta-label">Vibe Impact Analysis</span>
+                    <span class="critique-meta-val">${escapeHtml(cr.vibe_impact_analysis)}</span>
+                </div>
+            `;
+        }
+        if (cr.technical_alternative) {
+            content += `
+                <div class="critique-meta-item" style="margin-top: 10px;">
+                    <span class="critique-meta-label">Technical Alternative</span>
+                    <span class="critique-meta-val">${escapeHtml(cr.technical_alternative)}</span>
+                </div>
+            `;
+        }
+        if (cr.psychological_mentorship) {
+            content += `
+                <div class="critique-trigger-box" style="margin-top: 12px; background: rgba(165, 158, 146, 0.05); border-left: 3px solid #A59E92;">
+                    <strong>Psychological Mentorship</strong>
+                    <p style="color: #A59E92;">${escapeHtml(cr.psychological_mentorship)}</p>
+                </div>
+            `;
+        }
+        metaSec.innerHTML = content;
+        container.appendChild(metaSec);
+    }
+
+    if (data.actionable_experiment) {
+        const ae = data.actionable_experiment;
+        const planHeader = document.createElement('h4');
+        planHeader.className = 'critique-section-title';
+        planHeader.textContent = 'Actionable Experiment';
+        container.appendChild(planHeader);
+
+        const planList = document.createElement('div');
+        planList.className = 'critique-action-list';
+        const stepEl = document.createElement('div');
+        stepEl.className = 'critique-action-step';
+        stepEl.innerHTML = `
+            <div class="critique-step-num">!</div>
+            <div class="critique-step-content">
+                <p class="critique-step-text">${escapeHtml(ae.step)}</p>
+                <p class="critique-step-benefit"><strong>Benefit:</strong> ${escapeHtml(ae.benefit)}</p>
+            </div>
+        `;
+        planList.appendChild(stepEl);
+        container.appendChild(planList);
+    }
+
+    return container;
 }
 
 // 6. Render local chat cache (No Emojis!)
@@ -362,15 +644,39 @@ function renderChatHistory(messages) {
         const senderClass = msg.sender === 'gemini' ? 'gemini' : 'user';
         bubble.className = `message-bubble ${senderClass}`;
 
-        const authorEl = document.createElement('div');
-        authorEl.className = `message-author ${senderClass}`;
-        authorEl.textContent = senderClass === 'gemini' ? 'Gemini Critique' : 'Me';
-
         const bodyEl = document.createElement('div');
-        bodyEl.style.cssText = 'white-space: pre-wrap; font-size: 13px; line-height: 1.5;';
-        bodyEl.textContent = msg.message;  // textContent — never executed as HTML
+        bodyEl.style.cssText = 'font-size: 15px; line-height: 1.5;';
 
-        bubble.appendChild(authorEl);
+        // Check if message is JSON format (structured critique)
+        let cleanText = msg.message.trim();
+        let isJson = false;
+
+        // Strip Markdown block formatting
+        if (cleanText.startsWith('```json')) {
+            cleanText = cleanText.substring(7);
+        } else if (cleanText.startsWith('```')) {
+            cleanText = cleanText.substring(3);
+        }
+        if (cleanText.endsWith('```')) {
+            cleanText = cleanText.substring(0, cleanText.length - 3);
+        }
+        cleanText = cleanText.trim();
+
+        if (cleanText.startsWith('{') && cleanText.endsWith('}')) {
+            try {
+                const data = JSON.parse(cleanText);
+                bodyEl.appendChild(formatCritiqueJson(data));
+                isJson = true;
+            } catch (err) {
+                console.warn('Failed to parse critique JSON message, rendering raw text:', err);
+            }
+        }
+
+        if (!isJson) {
+            bodyEl.style.whiteSpace = 'pre-wrap';
+            bodyEl.textContent = msg.message; // fallback to textContent
+        }
+
         bubble.appendChild(bodyEl);
         thread.appendChild(bubble);
     });
@@ -379,7 +685,7 @@ function renderChatHistory(messages) {
     thread.scrollTop = thread.scrollHeight;
 }
 
-// 7. Handle sending message and receiving mock Gemini artist critique
+// 7. Handle sending a message — uses POST /chat which maintains history context
 async function handleSendChatMessage(event) {
     event.preventDefault();
     if (!activeDrawingId) return;
@@ -388,45 +694,57 @@ async function handleSendChatMessage(event) {
     const prompt = input.value.trim();
     if (!prompt) return;
 
+    const submitBtn = event.target.querySelector('button[type="submit"]');
     input.value = '';
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<span class="dots-loader"><span></span><span></span><span></span></span>'; }
+
+    // Optimistically render user message using DOM APIs (Fix #2 — no innerHTML)
+    const thread = document.getElementById('chatHistory');
+    const userBubble = document.createElement('div');
+    userBubble.className = 'message-bubble user';
+
+    const bodyEl = document.createElement('div');
+    bodyEl.style.cssText = 'white-space: pre-wrap; font-size: 15px;';
+    bodyEl.textContent = prompt;
+
+    userBubble.appendChild(bodyEl);
+    thread.appendChild(userBubble);
+
+    // Append temporary loading bubble for Gemini
+    const loadingBubble = document.createElement('div');
+    loadingBubble.className = 'message-bubble gemini temp-loading';
+    const aiBodyEl = document.createElement('div');
+    aiBodyEl.className = 'dots-loader-container';
+    aiBodyEl.innerHTML = '<span class="dots-loader"><span></span><span></span><span></span></span>';
+    loadingBubble.appendChild(aiBodyEl);
+    thread.appendChild(loadingBubble);
+
+    thread.scrollTop = thread.scrollHeight;
 
     try {
-        // Fix #2: Build the optimistic user bubble using DOM APIs, not innerHTML,
-        // so the raw prompt string is never parsed as HTML.
-        const thread = document.getElementById('chatHistory');
-        const userBubble = document.createElement('div');
-        userBubble.className = 'message-bubble user';
+        // POST /chat — saves the user message, builds history, calls AI, saves AI response
+        const authHeader = await getAuthHeader();
+        const headers = { 'Content-Type': 'application/json' };
+        if (authHeader) headers['Authorization'] = authHeader;
 
-        const authorEl = document.createElement('div');
-        authorEl.className = 'message-author user';
-        authorEl.textContent = 'Me';
-
-        const bodyEl = document.createElement('div');
-        bodyEl.style.cssText = 'white-space: pre-wrap; font-size: 13px;';
-        bodyEl.textContent = prompt;  // textContent — never executed as HTML
-
-        userBubble.appendChild(authorEl);
-        userBubble.appendChild(bodyEl);
-        thread.appendChild(userBubble);
-        thread.scrollTop = thread.scrollHeight;
-
-        // Call mock Gemini analysis endpoint
-        const res = await fetch(`${API_URL}/api/gallery/${activeDrawingId}/review`, {
+        const res = await fetch(`${API_URL}/api/gallery/${activeDrawingId}/chat`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ customPrompt: prompt })
+            headers,
+            body: JSON.stringify({ message: prompt, sender: 'user' }),
         });
-        const data = await res.json();
 
-        if (data.success) {
-            // Load fresh chat history
-            const chatRes = await fetch(`${API_URL}/api/gallery/${activeDrawingId}/chat`);
-            const chatData = await chatRes.json();
-            renderChatHistory(chatData.history);
-        }
+        if (!res.ok) throw new Error(`Chat request failed: ${res.status}`);
+
+        // Reload full history so AI response renders correctly
+        const chatRes = await fetch(`${API_URL}/api/gallery/${activeDrawingId}/chat`);
+        const chatData = await chatRes.json();
+        renderChatHistory(chatData.history);
+
     } catch (e) {
-        console.error("Failed to get review from mock Gemini:", e);
-        alert("Critique connection error. Make sure your local server is running!");
+        console.error('Chat send error:', e);
+        alert('Could not send message. Make sure both backends are running.');
+    } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = 'Anchor'; }
     }
 }
 
@@ -470,10 +788,33 @@ async function checkBurnoutAlerts() {
     }
 }
 
-async function triggerManualBurnoutCheck() {
-    await refreshGallery();
-    await checkBurnoutAlerts();
-    alert("Stagnation check completed successfully.");
+async function triggerManualRefresh() {
+    await loadSettings();
+    alert("Workspace refreshed successfully.");
+}
+
+async function triggerClearLocalCache() {
+    const confirmed = confirm("Are you sure you want to clear the local cache? This will reset all gallery hours, chat history, and delete generated thumbnails. This action cannot be undone.");
+    if (!confirmed) return;
+
+    try {
+        const res = await fetch(`${API_URL}/api/settings/clear-cache`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            alert("Local cache cleared successfully.");
+            activeDrawingId = null;
+            const chatPanel = document.getElementById('chatPanel');
+            if (chatPanel) {
+                chatPanel.classList.add('completely-hidden');
+            }
+            await loadSettings();
+        } else {
+            alert(`Error clearing cache: ${data.error}`);
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Failed to clear local cache.");
+    }
 }
 
 // Kickstart settings and file scan on DOM load

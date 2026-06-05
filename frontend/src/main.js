@@ -1,6 +1,7 @@
 // src/main.js
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const Store = require('electron-store').default;
 
 // Fix #8: Encrypt store so tokens/PII are not stored in plaintext on disk.

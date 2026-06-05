@@ -50,12 +50,15 @@ _Client: Client = setupSB()
 
 def _upload_file(file, filename, user: uuid, bucket_name):
     file_bytes = file.read()
-    content_type = file.content_type
+    content_type = file.content_type or "image/png"
     
     _Client.storage.from_(bucket_name).upload(
         path=f'{str(user)}/{filename}',
         file=file_bytes,
-        file_options={"content-type": content_type}
+        file_options={
+            "content-type": content_type,
+            "upsert": "true",   # prevent Duplicate errors on retries
+        }
     )
 
 def upload_image_thumbnail(image, thumbnail, filename: str, user: uuid):

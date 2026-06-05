@@ -1,6 +1,10 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
+    env: {
+        API_BASE_URL: process.env.API_BASE_URL || 'http://localhost:5000',
+        LOCAL_BACKEND_URL: process.env.LOCAL_BACKEND_URL || 'http://localhost:5002',
+    },
     store: {
         get: (key) => ipcRenderer.invoke('store:get', key),
         set: (key, value) => ipcRenderer.invoke('store:set', key, value),

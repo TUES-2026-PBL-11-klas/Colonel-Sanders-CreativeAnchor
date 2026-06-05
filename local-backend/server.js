@@ -1,4 +1,5 @@
 // backend/server.js
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -283,6 +284,15 @@ function getInitialPrompt() {
     return "Analyze my drawing and give me feedback.";
 }
 
+// ── Debug logger ─────────────────────────────────────────────────────────────
+// Writes to console AND appends to ai_debug.log for persistent inspection.
+const LOG_FILE = path.join(__dirname, 'ai_debug.log');
+function writeLog(msg) {
+    const line = `[${new Date().toISOString()}] ${msg}`;
+    try { fs.appendFileSync(LOG_FILE, line + '\n'); } catch (_) {}
+    console.log(line);
+}
+
 // Check for simple prompt injections or off-topic keywords (Local Guardrail)
 function checkOffTopicOrInjection(prompt) {
     if (!prompt) return null;
@@ -306,115 +316,97 @@ function checkOffTopicOrInjection(prompt) {
     return null;
 }
 
-// Helper to upload thumbnail and call Flask AI chat endpoint
+// Helper to call Flask AI chat endpoint by sending thumbnail bytes directly.
+// This bypasses Supabase storage entirely (avoids RLS policy issues).
 async function sendToHostedBackend(thumbnailRelativePath, customPrompt = null, history = null, imageUuid = null, isTestMode = false, authHeader = null) {
+    writeLog(`[AI] ======== New AI request ========`);
+    writeLog(`[AI] Auth header present: ${!!authHeader}`);
+    writeLog(`[AI] thumbnailPath: ${thumbnailRelativePath || 'none'}`);
+    writeLog(`[AI] customPrompt: ${customPrompt ? customPrompt.substring(0, 100) + '...' : 'none (system prompt only)'}`);
+
     // 1. Guardrail check (local layer)
     if (customPrompt) {
         const localBlockResponse = checkOffTopicOrInjection(customPrompt);
         if (localBlockResponse) {
-            console.log("[GUARDRAIL] Local block triggered for prompt:", customPrompt);
-            return { text: localBlockResponse, imageUuid: imageUuid || "test-uuid-999" };
+            writeLog(`[AI] GUARDRAIL blocked prompt`);
+            return { text: localBlockResponse, imageUuid: null };
         }
     }
 
     if (isTestMode) {
-        console.log("[AI BRIDGE] [TEST MODE] Simulating hosted backend response");
+        writeLog(`[AI] TEST MODE — returning simulated response`);
         return {
             text: "Gemini Critique: The lighting is well balanced. Try focusing on anatomy instead of over-rendering.",
-            imageUuid: imageUuid || "test-uuid-999"
+            imageUuid: null
         };
     }
 
-    let finalImageUuid = imageUuid;
-    if (!finalImageUuid) {
-        if (!thumbnailRelativePath) {
-            throw new Error("No thumbnail path or image UUID provided");
-        }
-        const absoluteThumbPath = path.resolve(__dirname, thumbnailRelativePath);
-        if (!fs.existsSync(absoluteThumbPath)) {
-            throw new Error(`Thumbnail file not found at: ${absoluteThumbPath}`);
-        }
-
-        console.log(`[AI BRIDGE] Uploading thumbnail to hosted backend: ${absoluteThumbPath}`);
-        const fileBuffer = fs.readFileSync(absoluteThumbPath);
-        const blob = new Blob([fileBuffer], { type: 'image/png' });
-        const formData = new FormData();
-        
-        // Append thumbnail as both 'image' and 'thumbnail' to bypass file size limits
-        // while fulfilling the Python backend's requirement for both keys.
-        formData.append('image', blob, path.basename(absoluteThumbPath));
-        formData.append('thumbnail', blob, path.basename(absoluteThumbPath));
-
-        // Post image to hosted backend
-        const uploadHeaders = {};
-        if (authHeader) {
-            uploadHeaders['Authorization'] = authHeader;
-        }
-
-        const uploadRes = await fetch('http://localhost:5000/images', {
-            method: 'POST',
-            body: formData,
-            headers: uploadHeaders
-        });
-
-        if (!uploadRes.ok) {
-            const errorText = await uploadRes.text();
-            throw new Error(`Failed to upload image: ${uploadRes.statusText} - ${errorText}`);
-        }
-
-        const uploadData = await uploadRes.json();
-        finalImageUuid = uploadData.file_uuid;
-        console.log(`[AI BRIDGE] Image uploaded. UUID: ${finalImageUuid}`);
+    if (!thumbnailRelativePath) {
+        throw new Error("No thumbnail path provided for this gallery entry.");
     }
 
-    // 2. Request chat response from hosted backend
-    console.log(`[AI BRIDGE] Requesting AI response for UUID: ${finalImageUuid}`);
-    
-    // Add guardrail wrapper around customPrompt to prevent LLM level prompt injection
+    const absoluteThumbPath = path.resolve(__dirname, thumbnailRelativePath);
+    if (!fs.existsSync(absoluteThumbPath)) {
+        throw new Error(`Thumbnail file not found at: ${absoluteThumbPath}`);
+    }
+
+    // 2. Wrap customPrompt in guardrail for LLM-level prompt injection protection
     let processedPrompt = customPrompt;
     if (customPrompt) {
         processedPrompt = `[GUARDRAIL: You are strictly an Art Critic and Psychological Mentor. If the user query is off-topic, refuse to answer and remind them to focus on art/burnout. User Query: "${customPrompt}"]`;
     }
 
-    const bodyPayload = {
-        image_uuid: finalImageUuid
-    };
-    if (processedPrompt !== null && processedPrompt !== undefined) {
-        bodyPayload.custom_prompt = processedPrompt;
+    // 3. Send image bytes directly to Flask /chat/direct — no Supabase storage needed
+    writeLog(`[AI] Reading thumbnail: ${absoluteThumbPath}`);
+    const fileBuffer = fs.readFileSync(absoluteThumbPath);
+    const blob = new Blob([fileBuffer], { type: 'image/png' });
+
+    const formData = new FormData();
+    formData.append('image', blob, path.basename(absoluteThumbPath));
+    if (processedPrompt) {
+        formData.append('custom_prompt', processedPrompt);
     }
-    if (history) {
-        bodyPayload.history = history;
+    if (history && history.length > 0) {
+        formData.append('history', JSON.stringify(history));
     }
 
-    const chatHeaders = {
-        'Content-Type': 'application/json'
-    };
+    const headers = {};
     if (authHeader) {
-        chatHeaders['Authorization'] = authHeader;
+        headers['Authorization'] = authHeader;
+    } else {
+        writeLog(`[AI] WARNING: No auth header — Flask will reject with 401`);
     }
 
-    const chatRes = await fetch('http://localhost:5000/chat', {
+    writeLog(`[AI] POST /chat/direct | prompt: ${processedPrompt ? 'yes' : 'none'} | history: ${history ? history.length : 0} msgs`);
+
+    const pythonApiUrl = process.env.API_BASE_URL || 'http://localhost:5000';
+    const chatRes = await fetch(`${pythonApiUrl}/chat/direct`, {
         method: 'POST',
-        headers: chatHeaders,
-        body: JSON.stringify(bodyPayload)
+        headers,
+        body: formData,
     });
+
+    writeLog(`[AI] /chat/direct response: ${chatRes.status} ${chatRes.statusText}`);
 
     if (!chatRes.ok) {
         const errorText = await chatRes.text();
-        throw new Error(`Failed to get critique: ${chatRes.statusText} - ${errorText}`);
+        writeLog(`[AI] /chat/direct error body: ${errorText}`);
+        throw new Error(`Chat failed (${chatRes.status}): ${errorText}`);
     }
 
     const chatData = await chatRes.json();
-    console.log(`[AI BRIDGE] AI Response received:`, chatData.text);
+    writeLog(`[AI] Success. Response length: ${chatData.text ? chatData.text.length : 0} chars`);
     return {
         text: chatData.text,
-        imageUuid: finalImageUuid
+        imageUuid: null   // no longer using Supabase storage UUIDs
     };
 }
+
 
 // ----------------------------------------------------
 // REST API ENDPOINTS
 // ----------------------------------------------------
+
 
 // 1. Settings Endpoints (Watch Folder & Device Info)
 app.get('/api/settings', (req, res) => {
@@ -449,6 +441,36 @@ app.post('/api/settings/watch-folder', (req, res) => {
     } catch (e) {
         console.error("Failed to change sync folder:", e);
         res.status(500).json({ success: false, error: `Invalid folder path: ${e.message}` });
+    }
+});
+
+// Endpoint to clear local cache
+app.post('/api/settings/clear-cache', (req, res) => {
+    try {
+        // 1. Reset database
+        db.resetDb();
+
+        // 2. Clear thumbnails directory contents
+        if (fs.existsSync(THUMB_DIR)) {
+            const files = fs.readdirSync(THUMB_DIR);
+            for (const file of files) {
+                if (file !== '.gitkeep') {
+                    try {
+                        fs.unlinkSync(path.join(THUMB_DIR, file));
+                    } catch (err) {
+                        console.warn(`Could not delete thumbnail file ${file}:`, err.message);
+                    }
+                }
+            }
+        }
+
+        // 3. Re-initialize folder watcher on current sync dir
+        initFolderWatcher(currentSyncDir);
+
+        res.json({ success: true, message: "Local cache and thumbnails cleared successfully." });
+    } catch (e) {
+        console.error("Failed to clear local cache:", e);
+        res.status(500).json({ success: false, error: e.message });
     }
 });
 
@@ -501,55 +523,6 @@ app.post('/api/gallery/:id/access', async (req, res) => {
     const entry = db.getGalleryEntry(id);
     if (!entry) {
         return res.status(404).json({ success: false, error: 'Gallery entry not found' });
-    }
-
-    const authHeader = req.headers['authorization'];
-    const chat = db.getChatByGalleryEntry(id);
-    // Needs critique if chat is empty OR if it has been marked as needing critique since the last save
-    const shouldCritique = (chat.history.length === 0 || entry.needsCritique === true) && entry.thumbnailPath;
-
-    // Concurrency check: if already running, skip
-    if (shouldCritique && !activeCritiques[id]) {
-        console.log(`[AI BRIDGE] First open after save detected for "${entry.fileName}". Triggering AI critique.`);
-        
-        // 1. Immediately flag as false in the database to prevent duplicate requests
-        db.saveGalleryEntry({
-            id: id,
-            needsCritique: false
-        });
-
-        // 2. Set memory lock and trigger async execution without awaiting (so we don't block the endpoint response)
-        activeCritiques[id] = true;
-        (async () => {
-            try {
-                const initialPrompt = getInitialPrompt();
-                const isTestMode = req.headers['x-test-mode'] === 'true' || process.env.NODE_ENV === 'test';
-                const { text: critique, imageUuid } = await sendToHostedBackend(
-                    entry.thumbnailPath,
-                    null,
-                    null,
-                    entry.imageUuid,
-                    isTestMode,
-                    authHeader
-                );
-
-                db.addMessageToChat(id, "gemini", critique);
-                db.saveGalleryEntry({
-                    id: id,
-                    imageUuid: imageUuid
-                });
-                console.log(`[AI BRIDGE] Critique successfully added to chat history for "${entry.fileName}". Saved imageUuid: ${imageUuid}`);
-            } catch (error) {
-                console.error(`[AI BRIDGE] Error during critique for ${entry.fileName}:`, error.message);
-                // Restore needsCritique to true so it can retry on next click
-                db.saveGalleryEntry({
-                    id: id,
-                    needsCritique: true
-                });
-            } finally {
-                delete activeCritiques[id];
-            }
-        })();
     }
 
     const updated = db.saveGalleryEntry({
@@ -618,39 +591,55 @@ app.get('/api/gallery/burnout-check', (req, res) => {
 // 6. Gemini Burnout Analysis (real artist feedback)
 app.post('/api/gallery/:id/review', async (req, res) => {
     const { id } = req.params;
-    const { customPrompt } = req.body;
+    const { customPrompt, skipUserMessage } = req.body;
     const entry = db.getGalleryEntry(id);
     if (!entry) return res.status(404).json({ success: false, error: 'Gallery entry not found' });
 
+    // Prevent race condition duplicate critique calls
+    if (activeCritiques[id]) {
+        writeLog(`[REVIEW] Critique already in progress for "${entry.fileName}". Waiting for lock release...`);
+        while (activeCritiques[id]) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+        }
+        const chat = db.getChatByGalleryEntry(id);
+        const latestMsg = chat.history[chat.history.length - 1];
+        if (latestMsg && latestMsg.sender === 'gemini') {
+            writeLog(`[REVIEW] Returning lock-released pre-generated critique for "${entry.fileName}" to avoid duplicate.`);
+            return res.json({ success: true, review: latestMsg.message, message: latestMsg });
+        }
+    }
+
     try {
         const authHeader = req.headers['authorization'];
+        writeLog(`[REVIEW] id=${id} | skipUserMessage=${!!skipUserMessage} | authPresent=${!!authHeader} | customPrompt=${customPrompt ? 'yes' : 'none'}`);
+
         const isTestMode = req.headers['x-test-mode'] === 'true' || process.env.NODE_ENV === 'test';
+
+        // Fight Burnout (skipUserMessage=true) uses the predefined initial prompt.
+        // Regular user messages use customPrompt. Fallback to a default.
+        const effectivePrompt = customPrompt || (skipUserMessage ? getInitialPrompt() : 'Analyze my drawing');
+
         const { text: critique, imageUuid } = await sendToHostedBackend(
             entry.thumbnailPath,
-            customPrompt || "Analyze my drawing",
+            effectivePrompt,
             null,
             entry.imageUuid,
             isTestMode,
             authHeader
         );
 
-        // Save image UUID back if it was generated/uploaded
-        db.saveGalleryEntry({
-            id: id,
-            imageUuid: imageUuid
-        });
+        db.saveGalleryEntry({ id, imageUuid });
 
-        db.addMessageToChat(id, "user", customPrompt || "Analyze my drawing");
+        if (!skipUserMessage) {
+            db.addMessageToChat(id, "user", customPrompt || 'Analyze my drawing');
+        }
         const geminiMsg = db.addMessageToChat(id, "gemini", critique);
 
-        res.json({
-            success: true,
-            review: critique,
-            message: geminiMsg
-        });
+        res.json({ success: true, review: critique, message: geminiMsg });
     } catch (error) {
+        writeLog(`[REVIEW] ERROR for ${entry.fileName}: ${error.message}`);
         console.error(`[AI BRIDGE] Error during review for ${entry.fileName}:`, error.message);
-        res.status(500).json({ success: false, error: `Failed to generate critique: ${error.message}` });
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
