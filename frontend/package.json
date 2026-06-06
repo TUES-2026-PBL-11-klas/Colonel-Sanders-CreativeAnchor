@@ -5,7 +5,8 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dist": "electron-builder"
   },
   "repository": {
     "type": "git",
@@ -22,6 +23,29 @@
     "electron-store": "^11.0.2"
   },
   "devDependencies": {
-    "electron": "^42.3.2"
+    "electron": "^42.3.2",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.creativeanchor.app",
+    "productName": "Creative Anchor",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "files": [
+      "src/**/*",
+      "package.json",
+      "../local-backend/**/*"
+    ]
   }
 }

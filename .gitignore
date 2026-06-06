@@ -5,6 +5,7 @@ node_modules/
 
 # Local databases and runtime data
 local-backend/local_db.json
+anchor_db.json
 local-backend/sync_folder/*
 !local-backend/sync_folder/.gitkeep
 local-backend/thumbnails/*
@@ -50,3 +51,13 @@ signing_keys.json
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Electron build outputs
+/frontend/dist/
+dist/
+
+# Test coverage and cache reports
+.nyc_output/
+.pytest_cache/
+.coverage
+htmlcov/

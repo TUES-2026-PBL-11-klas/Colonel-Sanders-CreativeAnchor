@@ -1,8 +1,11 @@
 // src/main.js
 const path = require('path');
+const { fork } = require('child_process');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const Store = require('electron-store').default;
+
+let backendProcess = null;
 
 // Fix #8: Encrypt store so tokens/PII are not stored in plaintext on disk.
 const store = new Store({
@@ -122,7 +125,34 @@ ipcMain.on('window-close', () => {
     if (mainWindow) mainWindow.close();
 });
 
-app.on('ready', createWindow);
+function startLocalBackend() {
+    let backendPath;
+    if (app.isPackaged) {
+        backendPath = path.join(process.resourcesPath, 'local-backend', 'server.js');
+    } else {
+        backendPath = path.join(__dirname, '..', '..', 'local-backend', 'server.js');
+    }
+
+    console.log('[MAIN] Starting local backend at:', backendPath);
+    
+    // Fork the Node.js server script as a child process
+    backendProcess = fork(backendPath, [], {
+        env: { ...process.env, PORT: 5002 }
+    });
+
+    backendProcess.on('error', (err) => {
+        console.error('[MAIN] Failed to start local backend:', err);
+    });
+
+    backendProcess.on('exit', (code, signal) => {
+        console.log(`[MAIN] Local backend exited with code ${code} and signal ${signal}`);
+    });
+}
+
+app.on('ready', () => {
+    startLocalBackend();
+    createWindow();
+});
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
@@ -131,7 +161,16 @@ app.on('window-all-closed', () => {
 });
 
 app.on('will-quit', () => {
-    // Send a POST request to shutdown the local backend server process
+    // Proactively kill the backend subprocess if it is active
+    if (backendProcess) {
+        try {
+            backendProcess.kill();
+        } catch (e) {
+            console.error('Failed to kill backend subprocess:', e);
+        }
+    }
+
+    // Send a POST request to shutdown the local backend server process (best effort)
     const http = require('http');
     let host = '127.0.0.1';
     let port = 5002;
