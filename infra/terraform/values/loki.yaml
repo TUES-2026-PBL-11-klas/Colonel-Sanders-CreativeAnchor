@@ -1,0 +1,12 @@
+deploymentMode: SingleBinary
+
+loki:
+  useTestSchema: true
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem
+    filesystem:
+      directory: /tmp/loki
+  ruler:
+    enabled: false
