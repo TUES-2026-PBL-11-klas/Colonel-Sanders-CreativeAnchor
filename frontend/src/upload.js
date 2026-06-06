@@ -460,66 +460,44 @@ async function selectDrawingCard(id) {
         const fightSection = document.getElementById('fightBurnoutSection');
         const composer = document.getElementById('chatComposer');
 
+        // Always enable the composer input and submit button whenever a drawing is selected
+        const chatInput = document.getElementById('chatInput');
+        const chatSubmitBtn = document.getElementById('chatSubmitBtn');
+        if (chatInput && chatSubmitBtn) {
+            chatInput.disabled = false;
+            chatInput.placeholder = "Ask Anchor about your lighting, anatomy or composition...";
+            chatInput.style.backgroundColor = '';
+            chatInput.style.borderColor = '';
+            chatInput.style.color = '';
+            chatInput.style.opacity = '';
+            chatInput.style.cursor = '';
+            
+            chatSubmitBtn.disabled = false;
+            chatSubmitBtn.style.backgroundColor = '';
+            chatSubmitBtn.style.border = '';
+            chatSubmitBtn.style.color = '';
+            chatSubmitBtn.style.opacity = '';
+            chatSubmitBtn.style.cursor = '';
+            chatSubmitBtn.style.boxShadow = '';
+        }
+
         if (hasChatHistory) {
             // Already has AI messages — show them and the composer directly
             fightSection.style.display = 'none';
             document.getElementById('chatHistory').style.display = 'flex';
-            composer.style.display = 'flex';
-            
-            const chatInput = document.getElementById('chatInput');
-            const chatSubmitBtn = document.getElementById('chatSubmitBtn');
-            if (chatInput && chatSubmitBtn) {
-                chatInput.disabled = false;
-                chatInput.placeholder = "Ask Anchor about your lighting, anatomy or composition...";
-                chatInput.style.backgroundColor = '';
-                chatInput.style.borderColor = '';
-                chatInput.style.color = '';
-                chatInput.style.opacity = '';
-                chatInput.style.cursor = '';
-                
-                chatSubmitBtn.disabled = false;
-                chatSubmitBtn.style.backgroundColor = '';
-                chatSubmitBtn.style.border = '';
-                chatSubmitBtn.style.color = '';
-                chatSubmitBtn.style.opacity = '';
-                chatSubmitBtn.style.cursor = '';
-                chatSubmitBtn.style.boxShadow = '';
-            }
-            
             renderChatHistory(chatData.history);
         } else {
-            // No history yet — show the Fight Burnout CTA, keep composer container visible but disabled
+            // No history yet — show the Fight Burnout CTA but keep composer active
             fightSection.style.display = 'flex';
             document.getElementById('chatHistory').style.display = 'none';
             const btn = document.getElementById('fightBurnoutBtn');
             btn.disabled = false;
             btn.innerHTML = 'Fight Burnout';
             
-            composer.style.display = 'flex';
-            
-            const chatInput = document.getElementById('chatInput');
-            const chatSubmitBtn = document.getElementById('chatSubmitBtn');
-            if (chatInput && chatSubmitBtn) {
-                chatInput.disabled = true;
-                chatInput.placeholder = "Trigger Fight Burnout to start chatting...";
-                chatInput.style.backgroundColor = 'transparent';
-                chatInput.style.borderColor = '#8C877E';
-                chatInput.style.color = '#8C877E';
-                chatInput.style.opacity = '0.5';
-                chatInput.style.cursor = 'not-allowed';
-                
-                chatSubmitBtn.disabled = true;
-                chatSubmitBtn.style.backgroundColor = 'transparent';
-                chatSubmitBtn.style.border = '2.5px solid #8C877E';
-                chatSubmitBtn.style.color = '#8C877E';
-                chatSubmitBtn.style.opacity = '0.5';
-                chatSubmitBtn.style.cursor = 'not-allowed';
-                chatSubmitBtn.style.boxShadow = 'none';
-            }
-            
             // Clear any leftover messages from a previous selection
             document.getElementById('chatHistory').innerHTML = '';
         }
+        composer.style.display = 'flex';
 
         // Force the right chat panel to expand (remove collapsed state)
         chatCollapsed = false;
@@ -845,6 +823,10 @@ async function handleSendChatMessage(event) {
     input.value = '';
     if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<span class="dots-loader"><span></span><span></span><span></span></span>'; }
 
+    // Transition: hide Fight Burnout CTA and reveal history thread
+    document.getElementById('fightBurnoutSection').style.display = 'none';
+    document.getElementById('chatHistory').style.display = 'flex';
+
     // Optimistically render user message using DOM APIs (Fix #2 — no innerHTML)
     const thread = document.getElementById('chatHistory');
     const userBubble = document.createElement('div');
@@ -889,6 +871,12 @@ async function handleSendChatMessage(event) {
 
     } catch (e) {
         console.error('Chat send error:', e);
+        
+        // Clean up optimistic bubbles on failure
+        if (userBubble) userBubble.remove();
+        if (loadingBubble) loadingBubble.remove();
+        // Restore user's draft in the input field so they don't lose it
+        input.value = prompt;
         
         let friendlyMsg = 'Couldn\'t connect to the AI server or limit reached.';
         const errText = e.message.toLowerCase();

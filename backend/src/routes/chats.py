@@ -75,7 +75,7 @@ def NewMessage(json_data, chat_uuid: uuid):
         "role": "human",  # enum
         "content": json_data["message"]
     }).execute()
-
+    return jsonify({"status": "ok"}), 201
 
 @blp.route("/chat/gallery/<uuid:gallery_entry_id>", methods=["GET"])
 @blp.doc(security=[{"BearerAuth": []}])
