@@ -12,6 +12,10 @@ def create_app() -> Flask:
 
     app.config.from_object(Config)
 
+    @app.get("/healthz")
+    def healthz():
+        return {"status": "ok"}, 200
+
     api.init_app(app)
 
     api.register_blueprint(ImagesBlueprint)

@@ -8,6 +8,11 @@ metadata:
 spec:
   replicas: 1
   revisionHistoryLimit: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       app: supabase-storage
@@ -48,7 +53,7 @@ spec:
             - name: DATABASE_URL
               value: postgresql://supabase_storage_admin:$(DB_PASSWORD)@supabase-postgres.supabase.svc.cluster.local:5432/postgres
             - name: FILE_SIZE_LIMIT
-              value: "52428800"
+              value: "209715200"
             - name: STORAGE_BACKEND
               value: file
             - name: FILE_STORAGE_BACKEND_PATH
