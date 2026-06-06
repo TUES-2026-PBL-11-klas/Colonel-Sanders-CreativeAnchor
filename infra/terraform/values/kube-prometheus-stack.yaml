@@ -10,6 +10,11 @@ grafana:
   # Disable persistence to avoid PVC scheduling issues
   persistence:
     enabled: false
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      access: proxy
+      url: http://loki.monitoring.svc.cluster.local:3100
   sidecar:
     dashboards:
       enabled: true

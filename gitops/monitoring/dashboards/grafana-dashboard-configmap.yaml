@@ -10,10 +10,221 @@ metadata:
 data:
   creativeanchor-overview.json: |
     {
-      "title": "CreativeAnchor Overview",
       "uid": "creativeanchor-overview",
+      "title": "CreativeAnchor Cluster Overview",
       "schemaVersion": 38,
-      "version": 1,
+      "version": 2,
       "timezone": "browser",
-      "panels": []
+      "refresh": "30s",
+      "tags": ["creative-anchor", "backend", "supabase"],
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "templating": {
+        "list": [
+          {
+            "name": "namespace",
+            "type": "custom",
+            "query": "services,supabase",
+            "current": {
+              "text": "services + supabase",
+              "value": "$__all"
+            },
+            "includeAll": true,
+            "multi": true,
+            "allValue": "services|supabase"
+          }
+        ]
+      },
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Backend Ready Pods",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(kube_pod_status_ready{namespace=\"services\", pod=~\"creative-anchor.*\", condition=\"true\"})",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "green", "value": 1}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Supabase Ready Pods",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(kube_pod_status_ready{namespace=\"supabase\", pod=~\"supabase-.*\", condition=\"true\"})",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "green", "value": 6}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Restarts Last Hour",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=~\"services|supabase\", pod=~\"creative-anchor.*|supabase-.*\"}[1h]))",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "orange", "value": 1},
+                  {"color": "red", "value": 3}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Pods Not Running",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(kube_pod_status_phase{namespace=~\"services|supabase\", pod=~\"creative-anchor.*|supabase-.*\", phase!=\"Running\"})",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "red", "value": 1}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "CPU Usage By Pod",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+          "targets": [
+            {
+              "expr": "sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{namespace=~\"services|supabase\", pod=~\"creative-anchor.*|supabase-.*\", container!=\"\", image!=\"\"}[5m]))",
+              "legendFormat": "{{namespace}}/{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {"unit": "cores"}
+          }
+        },
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "Memory Usage By Pod",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+          "targets": [
+            {
+              "expr": "sum by (namespace, pod) (container_memory_working_set_bytes{namespace=~\"services|supabase\", pod=~\"creative-anchor.*|supabase-.*\", container!=\"\", image!=\"\"})",
+              "legendFormat": "{{namespace}}/{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {"unit": "bytes"}
+          }
+        },
+        {
+          "id": 7,
+          "type": "timeseries",
+          "title": "Pod Restarts By Pod",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12},
+          "targets": [
+            {
+              "expr": "sum by (namespace, pod) (increase(kube_pod_container_status_restarts_total{namespace=~\"services|supabase\", pod=~\"creative-anchor.*|supabase-.*\"}[15m]))",
+              "legendFormat": "{{namespace}}/{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {"unit": "short"}
+          }
+        },
+        {
+          "id": 8,
+          "type": "logs",
+          "title": "Backend Logs",
+          "datasource": {"type": "loki", "uid": "Loki"},
+          "gridPos": {"h": 9, "w": 12, "x": 0, "y": 20},
+          "targets": [
+            {
+              "expr": "{namespace=\"services\", pod=~\"creative-anchor.*\"}",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "showLabels": false,
+            "wrapLogMessage": true
+          }
+        },
+        {
+          "id": 9,
+          "type": "logs",
+          "title": "Supabase Logs",
+          "datasource": {"type": "loki", "uid": "Loki"},
+          "gridPos": {"h": 9, "w": 12, "x": 12, "y": 20},
+          "targets": [
+            {
+              "expr": "{namespace=\"supabase\", pod=~\"supabase-.*\"}",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "showLabels": false,
+            "wrapLogMessage": true
+          }
+        }
+      ]
     }

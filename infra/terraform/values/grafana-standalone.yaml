@@ -1,0 +1,34 @@
+persistence:
+  enabled: false
+
+adminUser: admin
+adminPassword: creative-anchor-admin
+
+sidecar:
+  dashboards:
+    enabled: true
+    searchNamespace: ALL
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        uid: prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus-server.monitoring.svc.cluster.local
+        isDefault: true
+      - name: Loki
+        uid: Loki
+        type: loki
+        access: proxy
+        url: http://loki.monitoring.svc.cluster.local:3100
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
