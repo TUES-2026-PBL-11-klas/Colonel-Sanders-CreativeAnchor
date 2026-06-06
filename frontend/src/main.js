@@ -126,6 +126,16 @@ ipcMain.on('window-close', () => {
 });
 
 function startLocalBackend() {
+    const fs = require('fs');
+    const logPath = path.join(app.getPath('userData'), 'local_backend.log');
+    
+    // Clear/initialize log file
+    try {
+        fs.writeFileSync(logPath, `--- STARTING BACKEND LOG: ${new Date().toISOString()} ---\n`);
+    } catch (e) {
+        console.error('Failed to create log file:', e);
+    }
+
     let backendPath;
     if (app.isPackaged) {
         backendPath = path.join(process.resourcesPath, 'local-backend', 'server.js');
@@ -133,20 +143,63 @@ function startLocalBackend() {
         backendPath = path.join(__dirname, '..', '..', 'local-backend', 'server.js');
     }
 
-    console.log('[MAIN] Starting local backend at:', backendPath);
+    try {
+        fs.appendFileSync(logPath, `[MAIN] Starting local backend at: ${backendPath}\n`);
+        fs.appendFileSync(logPath, `[MAIN] app.isPackaged: ${app.isPackaged}\n`);
+        fs.appendFileSync(logPath, `[MAIN] process.execPath: ${process.execPath}\n`);
+    } catch (e) {}
     
     // Fork the Node.js server script as a child process
-    backendProcess = fork(backendPath, [], {
-        env: { ...process.env, PORT: 5002 }
-    });
+    const forkEnv = { 
+        ...process.env, 
+        PORT: 5002,
+        ELECTRON_SPAWNED: 'true'
+    };
+    if (app.isPackaged) {
+        forkEnv.ELECTRON_RUN_AS_NODE = '1';
+    }
 
-    backendProcess.on('error', (err) => {
-        console.error('[MAIN] Failed to start local backend:', err);
-    });
+    try {
+        backendProcess = fork(backendPath, [], {
+            env: forkEnv,
+            silent: true
+        });
 
-    backendProcess.on('exit', (code, signal) => {
-        console.log(`[MAIN] Local backend exited with code ${code} and signal ${signal}`);
-    });
+        if (backendProcess.stdout) {
+            backendProcess.stdout.on('data', (data) => {
+                try {
+                    fs.appendFileSync(logPath, `[STDOUT] ${data}`);
+                } catch (e) {}
+            });
+        }
+
+        if (backendProcess.stderr) {
+            backendProcess.stderr.on('data', (data) => {
+                try {
+                    fs.appendFileSync(logPath, `[STDERR] ${data}`);
+                } catch (e) {}
+            });
+        }
+
+        backendProcess.on('error', (err) => {
+            console.error('[MAIN] Failed to start local backend:', err);
+            try {
+                fs.appendFileSync(logPath, `[ERROR] Process error: ${err.message}\n${err.stack}\n`);
+            } catch (e) {}
+        });
+
+        backendProcess.on('exit', (code, signal) => {
+            console.log(`[MAIN] Local backend exited with code ${code} and signal ${signal}`);
+            try {
+                fs.appendFileSync(logPath, `[EXIT] Process exited with code ${code} and signal ${signal}\n`);
+            } catch (e) {}
+        });
+    } catch (err) {
+        console.error('[MAIN] Exception during backend spawn:', err);
+        try {
+            fs.appendFileSync(logPath, `[EXCEPTION] Failed to fork: ${err.message}\n${err.stack}\n`);
+        } catch (e) {}
+    }
 }
 
 app.on('ready', () => {

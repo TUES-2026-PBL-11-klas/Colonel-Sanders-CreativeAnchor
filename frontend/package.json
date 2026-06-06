@@ -44,8 +44,33 @@
     },
     "files": [
       "src/**/*",
-      "package.json",
-      "../local-backend/**/*"
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../local-backend",
+        "to": "local-backend",
+        "filter": [
+          "**/*",
+          "!node_modules",
+          "!node_modules/**/*",
+          "!sync_folder",
+          "!sync_folder/**/*",
+          "!.nyc_output",
+          "!.nyc_output/**/*",
+          "!test_watch_folder",
+          "!test_watch_folder/**/*",
+          "!anchor_db.json",
+          "!ai_debug.log"
+        ]
+      },
+      {
+        "from": "../local-backend/node_modules",
+        "to": "local-backend/node_modules",
+        "filter": [
+          "**/*"
+        ]
+      }
     ]
   }
 }

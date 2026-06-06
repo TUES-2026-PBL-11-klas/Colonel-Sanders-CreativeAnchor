@@ -1192,6 +1192,10 @@ app.post('/api/gallery/scan', async (req, res) => {
 
 // Shutdown helper endpoint for clean Electron exits
 app.post('/api/shutdown', (req, res) => {
+    if (process.env.ELECTRON_SPAWNED !== 'true') {
+        console.log('[SHUTDOWN] Ignored shutdown request because server was not spawned by Electron.');
+        return res.json({ success: false, message: "Ignored shutdown request (not spawned by Electron)" });
+    }
     console.log('[SHUTDOWN] Shutdown request received from Electron app. Stopping watcher and exiting...');
     if (activeWatcher) {
         activeWatcher.close();
@@ -1203,10 +1207,20 @@ app.post('/api/shutdown', (req, res) => {
 });
 
 // Start Express Server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`\n=============================================================`);
     console.log(`  Creative Anchor Local Sync Backend running on http://localhost:${PORT}`);
     console.log(`  Sync directory watched: ${currentSyncDir}`);
     console.log(`  Thumbnails served: ${THUMB_DIR}`);
     console.log(`=============================================================\n`);
+});
+
+server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.log(`[SERVER] Port ${PORT} is already in use. Assuming another instance is running.`);
+        process.exit(0);
+    } else {
+        console.error('[SERVER] Server error:', err);
+        process.exit(1);
+    }
 });
