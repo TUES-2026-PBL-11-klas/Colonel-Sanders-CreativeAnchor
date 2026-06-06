@@ -38,6 +38,8 @@ jobs:
 
       - name: Run tests
         run: pytest -q
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend
 
   docker:
     runs-on: ubuntu-latest
