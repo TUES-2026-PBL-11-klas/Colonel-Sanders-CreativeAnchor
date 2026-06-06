@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: creative-anchor
+  labels:
+    app: creative-anchor
+spec:
+  selector:
+    app: creative-anchor
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+  type: ClusterIP

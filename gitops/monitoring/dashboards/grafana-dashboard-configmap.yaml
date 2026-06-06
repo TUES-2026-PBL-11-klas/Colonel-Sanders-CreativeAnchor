@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: creativeanchor-overview
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+    app: grafana
+
+data:
+  creativeanchor-overview.json: |
+    {
+      "title": "CreativeAnchor Overview",
+      "uid": "creativeanchor-overview",
+      "schemaVersion": 38,
+      "version": 1,
+      "timezone": "browser",
+      "panels": []
+    }

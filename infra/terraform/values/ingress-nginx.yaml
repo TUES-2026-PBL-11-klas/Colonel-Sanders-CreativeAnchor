@@ -1,0 +1,9 @@
+controller:
+  replicaCount: 1
+  service:
+    loadBalancerIP: ${ingress_public_ip}
+    annotations:
+      service.beta.kubernetes.io/azure-load-balancer-resource-group: ${ingress_public_ip_rg}
+      service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path: /healthz
+  admissionWebhooks:
+    enabled: true

@@ -1,0 +1,21 @@
+controller:
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+
+dex:
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+
+redis:
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+
+server:
+  ingress:
+    enabled: false
