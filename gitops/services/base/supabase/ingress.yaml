@@ -8,7 +8,28 @@ spec:
   rules:
     - http:
         paths:
-          - path: /(.*)
+          - path: /auth/v1
+            pathType: Prefix
+            backend:
+              service:
+                name: supabase-kong
+                port:
+                  number: 80
+          - path: /rest/v1
+            pathType: Prefix
+            backend:
+              service:
+                name: supabase-kong
+                port:
+                  number: 80
+          - path: /realtime/v1
+            pathType: Prefix
+            backend:
+              service:
+                name: supabase-kong
+                port:
+                  number: 80
+          - path: /storage/v1
             pathType: Prefix
             backend:
               service:

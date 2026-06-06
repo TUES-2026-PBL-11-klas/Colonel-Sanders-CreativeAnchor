@@ -45,6 +45,12 @@ spec:
                   key: jwt-secret
             - name: GOTRUE_JWT_EXP
               value: "3600"
+            - name: GOTRUE_JWT_AUD
+              value: authenticated
+            - name: GOTRUE_JWT_DEFAULT_GROUP_NAME
+              value: authenticated
+            - name: GOTRUE_JWT_ADMIN_ROLES
+              value: service_role
             - name: GOTRUE_EXTERNAL_EMAIL_ENABLED
               value: "true"
             - name: GOTRUE_MAILER_AUTOCONFIRM
@@ -59,4 +65,4 @@ spec:
               cpu: "250m"
               memory: "256Mi"
           ports:
-            - containerPort: 9999
+            - containerPort: 8081
