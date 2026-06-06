@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: creative-anchor
-          image: creativeanchor/creative-anchor:sha-REPLACE_ME
+          image: creativeanchor/creative-anchor:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000

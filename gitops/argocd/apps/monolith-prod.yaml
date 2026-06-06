@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: "REPLACE_WITH_GIT_URL"
+    repoURL: "https://github.com/TUES-2026-PBL-11-klas/Colonel-Sanders-CreativeAnchor"
     targetRevision: main
     path: gitops/services/overlays/prod
   destination:

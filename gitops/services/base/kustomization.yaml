@@ -30,5 +30,5 @@ resources:
 
 images:
   - name: creativeanchor/creative-anchor
-    newName: REPLACE_WITH_ACR_LOGIN_SERVER/creativeanchor/creative-anchor
-    newTag: sha-REPLACE_ME
+    newName: creativeanchoracr.azurecr.io/creativeanchor/creative-anchor
+    newTag: latest
