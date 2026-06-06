@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monolith-prod
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: "REPLACE_WITH_GIT_URL"
+    targetRevision: main
+    path: gitops/services/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: services
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
