@@ -7,6 +7,10 @@
     padding: 0;
 }
 
+input, textarea, select, button {
+    -webkit-app-region: no-drag;
+}
+
 body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     background-color: #1A1917; /* Warm Velvet Cocoa Dark Paper */
@@ -687,6 +691,7 @@ h1, h2, h3, .brand-serif {
     left: 12px;
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     gap: 6px;
     z-index: 5;
 }
@@ -702,6 +707,9 @@ h1, h2, h3, .brand-serif {
     border: 2px solid #131211;
     border-radius: 3px;
     box-shadow: 2px 2px 0px #131211;
+    text-align: center;
+    width: 85px;
+    display: inline-block;
 }
 
 .sync-badge {
@@ -710,14 +718,22 @@ h1, h2, h3, .brand-serif {
     font-weight: 700;
     font-size: 9px;
     text-transform: uppercase;
+    text-align: center;
     padding: 3px 6px;
     border: 1.5px solid #131211;
     border-radius: 2px;
+    width: 85px;
+    display: inline-block;
 }
 
 .sync-badge.synced {
     background-color: #1A3E26;
     color: #5CD081;
+}
+
+.sync-badge.cloud {
+    background-color: #1F2E3D;
+    color: #5CADD0;
 }
 
 /* Card Body Content */
@@ -855,6 +871,9 @@ h1, h2, h3, .brand-serif {
     font-size: 16px;
     font-weight: 700;
     color: #F5F2EB;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .chat-history {

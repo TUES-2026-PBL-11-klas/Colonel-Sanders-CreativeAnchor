@@ -129,3 +129,25 @@ app.on('window-all-closed', () => {
         app.quit();
     }
 });
+
+app.on('will-quit', () => {
+    // Send a POST request to shutdown the local backend server process
+    const http = require('http');
+    let host = '127.0.0.1';
+    let port = 5002;
+    if (process.env.LOCAL_BACKEND_URL) {
+        try {
+            const u = new URL(process.env.LOCAL_BACKEND_URL);
+            host = u.hostname;
+            port = u.port || 5002;
+        } catch (e) {}
+    }
+    const req = http.request({
+        hostname: host,
+        port: port,
+        path: '/api/shutdown',
+        method: 'POST',
+    });
+    req.on('error', () => {});
+    req.end();
+});

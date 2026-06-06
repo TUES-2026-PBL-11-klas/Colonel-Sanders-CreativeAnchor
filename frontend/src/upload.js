@@ -74,6 +74,13 @@ let chatCollapsed = true;    // start collapsed as default
 // 1. Initial configuration load on startup
 async function loadSettings() {
     try {
+        // Force synchronous folder scan on startup/settings load to align with filesystem
+        try {
+            await fetch(`${API_URL}/api/gallery/scan`, { method: 'POST' });
+        } catch (scanErr) {
+            console.warn("Failed to trigger startup folder scan:", scanErr);
+        }
+
         const res = await fetch(`${API_URL}/api/settings`);
         const data = await res.json();
 
@@ -202,11 +209,46 @@ function toggleRightChat() {
 // 4. Render files list dynamically in a grid of Neo-Brutalist cards
 async function refreshGallery() {
     try {
-        const res = await fetch(`${API_URL}/api/gallery`);
+        const authHeader = await getAuthHeader();
+        const headers = {};
+        if (authHeader) headers['Authorization'] = authHeader;
+
+        const res = await fetch(`${API_URL}/api/gallery`, { headers });
         drawings = await res.json();
         renderGalleryGrid();
     } catch (e) {
         console.error("Failed to fetch gallery entries:", e);
+    }
+}
+
+// 4b. Show native desktop notification if any drawings are stagnant for 5+ days
+function checkStagnantNotifications() {
+    if (!drawings || drawings.length === 0) return;
+
+    if (typeof Notification !== 'undefined' && Notification.permission !== "granted") {
+        Notification.requestPermission();
+    }
+
+    let hasStagnantFile = false;
+    drawings.forEach(file => {
+        const lastSaveDate = new Date(file.updatedAt);
+        const timeSinceLastSave = Date.now() - lastSaveDate.getTime();
+        const daysSinceLastSave = Math.floor(timeSinceLastSave / (1000 * 60 * 60 * 24));
+        if (daysSinceLastSave >= 5) {
+            hasStagnantFile = true;
+        }
+    });
+
+    if (hasStagnantFile) {
+        const sessionKey = 'notified_burnout_stagnant';
+        if (!sessionStorage.getItem(sessionKey)) {
+            if (typeof Notification !== 'undefined' && Notification.permission === "granted") {
+                new Notification("Creative Anchor", {
+                    body: "Feeling burned out?",
+                });
+                sessionStorage.setItem(sessionKey, 'true');
+            }
+        }
     }
 }
 
@@ -227,8 +269,6 @@ function renderGalleryGrid() {
     drawings.forEach(file => {
         const ext = file.fileName.split('.').pop().toLowerCase();
 
-        // Check if this file origin matches current device to evaluate "Master" status
-        const isMasterCopy = file.status === 'SYNCED' && file.deviceOrigin === currentDeviceId;
 
         // 1. Format CREATED date
         const createdDate = new Date(file.createdAt).toLocaleDateString(undefined, {
@@ -265,12 +305,17 @@ function renderGalleryGrid() {
 
         const hours = file.hoursSpent !== undefined ? file.hoursSpent.toFixed(1) : '0.0';
 
+        // Check if this file origin matches current device or backend-computed isMasterCopy
+        const isMasterCopy = file.localFileExists === true && (file.isMasterCopy || ((file.status === 'SYNCED' || file.status === 'synced') && file.deviceOrigin === currentDeviceId));
+
         // Dynamic Badge display (No Emojis!)
         let badgeHtml = '';
         if (isMasterCopy) {
             badgeHtml += `<span class="master-badge">Master</span>`;
         }
-        if (file.status === 'SYNCED') {
+        if (file.localFileExists === false) {
+            badgeHtml += `<span class="sync-badge cloud">Cloud Only</span>`;
+        } else if (file.status === 'SYNCED' || file.status === 'synced') {
             badgeHtml += `<span class="sync-badge synced">Synced</span>`;
         } else {
             badgeHtml += `<span class="sync-badge">Local Only</span>`;
@@ -369,20 +414,48 @@ async function selectDrawingCard(id) {
         // Refresh local array and grid with new last-opened date
         const idx = drawings.findIndex(d => d.id === id);
         if (idx !== -1) {
-            drawings[idx] = accessData.file;
+            drawings[idx] = {
+                ...drawings[idx],
+                ...accessData.file
+            };
             renderGalleryGrid();
         }
 
         const file = drawings.find(d => d.id === id);
 
         // Load Chat logs for this drawing file
-        const chatRes = await fetch(`${API_URL}/api/gallery/${id}/chat`);
+        const headers = {};
+        if (authHeader) headers['Authorization'] = authHeader;
+        const chatRes = await fetch(`${API_URL}/api/gallery/${id}/chat`, { headers });
         const chatData = await chatRes.json();
 
         // Update chat panel header
         document.getElementById('chatHeaderTitle').innerText = file.fileName;
         document.getElementById('chatHeaderSub').innerText = `Invested effort: ${file.hoursSpent.toFixed(1)} hours | Status: ${file.status}`;
-        document.getElementById('cloudSyncBtn').style.display = 'block';
+        
+        const syncBtn = document.getElementById('cloudSyncBtn');
+        if (syncBtn) {
+            syncBtn.style.display = 'block';
+            if (file.status === 'synced' || file.status === 'SYNCED') {
+                syncBtn.disabled = true;
+                syncBtn.innerText = 'Cloud Synced';
+                syncBtn.style.opacity = '0.5';
+                syncBtn.style.cursor = 'not-allowed';
+                syncBtn.style.backgroundColor = 'transparent';
+                syncBtn.style.border = '2px solid #8C877E';
+                syncBtn.style.color = '#8C877E';
+                syncBtn.style.boxShadow = 'none';
+            } else {
+                syncBtn.disabled = false;
+                syncBtn.innerText = 'Cloud Sync';
+                syncBtn.style.opacity = '1';
+                syncBtn.style.cursor = 'pointer';
+                syncBtn.style.backgroundColor = '';
+                syncBtn.style.border = '';
+                syncBtn.style.color = '';
+                syncBtn.style.boxShadow = '';
+            }
+        }
         const hasChatHistory = chatData.history && chatData.history.length > 0;
         const fightSection = document.getElementById('fightBurnoutSection');
         const composer = document.getElementById('chatComposer');
@@ -392,15 +465,58 @@ async function selectDrawingCard(id) {
             fightSection.style.display = 'none';
             document.getElementById('chatHistory').style.display = 'flex';
             composer.style.display = 'flex';
+            
+            const chatInput = document.getElementById('chatInput');
+            const chatSubmitBtn = document.getElementById('chatSubmitBtn');
+            if (chatInput && chatSubmitBtn) {
+                chatInput.disabled = false;
+                chatInput.placeholder = "Ask Anchor about your lighting, anatomy or composition...";
+                chatInput.style.backgroundColor = '';
+                chatInput.style.borderColor = '';
+                chatInput.style.color = '';
+                chatInput.style.opacity = '';
+                chatInput.style.cursor = '';
+                
+                chatSubmitBtn.disabled = false;
+                chatSubmitBtn.style.backgroundColor = '';
+                chatSubmitBtn.style.border = '';
+                chatSubmitBtn.style.color = '';
+                chatSubmitBtn.style.opacity = '';
+                chatSubmitBtn.style.cursor = '';
+                chatSubmitBtn.style.boxShadow = '';
+            }
+            
             renderChatHistory(chatData.history);
         } else {
-            // No history yet — show the Fight Burnout CTA, hide composer
+            // No history yet — show the Fight Burnout CTA, keep composer container visible but disabled
             fightSection.style.display = 'flex';
             document.getElementById('chatHistory').style.display = 'none';
             const btn = document.getElementById('fightBurnoutBtn');
             btn.disabled = false;
             btn.innerHTML = 'Fight Burnout';
-            composer.style.display = 'none';
+            
+            composer.style.display = 'flex';
+            
+            const chatInput = document.getElementById('chatInput');
+            const chatSubmitBtn = document.getElementById('chatSubmitBtn');
+            if (chatInput && chatSubmitBtn) {
+                chatInput.disabled = true;
+                chatInput.placeholder = "Trigger Fight Burnout to start chatting...";
+                chatInput.style.backgroundColor = 'transparent';
+                chatInput.style.borderColor = '#8C877E';
+                chatInput.style.color = '#8C877E';
+                chatInput.style.opacity = '0.5';
+                chatInput.style.cursor = 'not-allowed';
+                
+                chatSubmitBtn.disabled = true;
+                chatSubmitBtn.style.backgroundColor = 'transparent';
+                chatSubmitBtn.style.border = '2.5px solid #8C877E';
+                chatSubmitBtn.style.color = '#8C877E';
+                chatSubmitBtn.style.opacity = '0.5';
+                chatSubmitBtn.style.cursor = 'not-allowed';
+                chatSubmitBtn.style.boxShadow = 'none';
+            }
+            
             // Clear any leftover messages from a previous selection
             document.getElementById('chatHistory').innerHTML = '';
         }
@@ -463,13 +579,44 @@ async function triggerFightBurnout() {
         document.getElementById('fightBurnoutSection').style.display = 'none';
         document.getElementById('chatHistory').style.display = 'flex';
         document.getElementById('chatComposer').style.display = 'flex';
+        
+        const chatInput = document.getElementById('chatInput');
+        const chatSubmitBtn = document.getElementById('chatSubmitBtn');
+        if (chatInput && chatSubmitBtn) {
+            chatInput.disabled = false;
+            chatInput.placeholder = "Ask Anchor about your lighting, anatomy or composition...";
+            chatInput.style.backgroundColor = '';
+            chatInput.style.borderColor = '';
+            chatInput.style.color = '';
+            chatInput.style.opacity = '';
+            chatInput.style.cursor = '';
+            
+            chatSubmitBtn.disabled = false;
+            chatSubmitBtn.style.backgroundColor = '';
+            chatSubmitBtn.style.border = '';
+            chatSubmitBtn.style.color = '';
+            chatSubmitBtn.style.opacity = '';
+            chatSubmitBtn.style.cursor = '';
+            chatSubmitBtn.style.boxShadow = '';
+        }
         document.getElementById('chatInput').focus();
 
     } catch (e) {
         console.error('Fight Burnout error:', e);
         btn.disabled = false;
         btn.innerHTML = 'Fight Burnout';
-        alert(`AI Error: ${e.message}\n\nFull log: local-backend/ai_debug.log`);
+        
+        let friendlyMsg = 'An unexpected error occurred while processing the request.';
+        const errText = e.message.toLowerCase();
+        if (errText.includes('quota') || errText.includes('rate limit') || errText.includes('429') || errText.includes('423') || errText.includes('limit exceeded')) {
+            friendlyMsg = 'Exceeded API quota. Please try again in a few moments.';
+        } else if (errText.includes('image') || errText.includes('file') || errText.includes('thumbnail') || errText.includes('size') || errText.includes('format')) {
+            friendlyMsg = 'Error processing image file format.';
+        } else if (errText.includes('network') || errText.includes('fetch') || errText.includes('connect')) {
+            friendlyMsg = 'Failed to connect to the AI model server.';
+        }
+        
+        alert(`AI Error: ${friendlyMsg}\n\nFull details saved in local-backend/ai_debug.log`);
     }
 }
 
@@ -742,7 +889,16 @@ async function handleSendChatMessage(event) {
 
     } catch (e) {
         console.error('Chat send error:', e);
-        alert('Could not send message. Make sure both backends are running.');
+        
+        let friendlyMsg = 'Couldn\'t connect to the AI server or limit reached.';
+        const errText = e.message.toLowerCase();
+        if (errText.includes('quota') || errText.includes('rate limit') || errText.includes('429') || errText.includes('423') || errText.includes('limit exceeded')) {
+            friendlyMsg = 'AI Error: Exceeded quota or rate limit. Please try again in a few moments.';
+        } else if (errText.includes('injection') || errText.includes('focus on your artwork')) {
+            friendlyMsg = 'Prompt rejected by safety guardrails. Let\'s keep the discussion focused on art and burnout.';
+        }
+        
+        alert(friendlyMsg);
     } finally {
         if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = 'Anchor'; }
     }
@@ -753,18 +909,27 @@ async function triggerOptionalCloudSync() {
     if (!activeDrawingId) return;
 
     try {
-        const res = await fetch(`${API_URL}/api/gallery/${activeDrawingId}/sync`, { method: 'POST' });
+        const authHeader = await getAuthHeader();
+        const headers = {};
+        if (authHeader) headers['Authorization'] = authHeader;
+
+        const res = await fetch(`${API_URL}/api/gallery/${activeDrawingId}/sync`, { 
+            method: 'POST', 
+            headers 
+        });
         const data = await res.json();
-        if (data.success) {
-            alert(`Simulation Success: ${data.message}`);
+        if (data.success && data.file && data.file.status === 'synced') {
+            alert("Success: Drawing successfully backed up and synchronized to the cloud!");
             // Refresh database status in explorer
             await refreshGallery();
             // Re-select to update header subtext
             await selectDrawingCard(activeDrawingId);
+        } else {
+            alert(`Sync Failed: ${data.error || 'Server rejected synchronization request.'}`);
         }
     } catch (e) {
-        console.error(e);
-        alert("Failed to compile cloud synchronization payload.");
+        console.error("Cloud sync trigger error:", e);
+        alert("Failed to compile and send cloud synchronization payload. Please check your network connection or server status.");
     }
 }
 
@@ -820,4 +985,8 @@ async function triggerClearLocalCache() {
 // Kickstart settings and file scan on DOM load
 window.addEventListener('DOMContentLoaded', () => {
     loadSettings();
+    // Delay stagnant check notifications by 15 minutes upon startup
+    setTimeout(() => {
+        checkStagnantNotifications();
+    }, 15 * 60 * 1000);
 });

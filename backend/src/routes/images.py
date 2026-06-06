@@ -1,5 +1,5 @@
 from flask_smorest import Blueprint
-from flask import jsonify, request, g
+from flask import jsonify, request, g, make_response
 from src.services.supabase import upload_image_thumbnail, delete_image, _Client
 from src.services.auth import require_auth
 from src.schemas.ImageSchema import ImageMetadataSchema
@@ -56,6 +56,9 @@ def uploadMetadata(json_data):
     else:
         gallery_id = gallery.data[0]["id"]
     
+    created_at_val = json_data["createdAt"].isoformat() if "createdAt" in json_data and json_data["createdAt"] else datetime.now().isoformat()
+    updated_at_val = json_data["updatedAt"].isoformat() if "updatedAt" in json_data and json_data["updatedAt"] else datetime.now().isoformat()
+    
     res = (
         _Client.table("gallery_entries")
         .insert({
@@ -67,13 +70,58 @@ def uploadMetadata(json_data):
             "is_compressed": False,
             "sync_status": json_data["syncStatus"].value,
             "retry_count": 0,
-            "created_at": datetime.now().isoformat(),
-            "last_modified_at": datetime.now().isoformat()
+            "created_at": created_at_val,
+            "last_modified_at": updated_at_val
         })
         .execute()
     )
     
     return jsonify({"status": "ok"})
+
+
+@blp.route("/images", methods=["GET"])
+@blp.doc(security=[{"BearerAuth": []}])
+@require_auth
+def getImages():
+    user_id = str(g.sub_uuid)
+    
+    # Find user gallery
+    gallery = (
+        _Client.table("galleries")
+        .select("id")
+        .eq("user_id", user_id)
+        .execute()
+    )
+    
+    if not gallery.data:
+        return jsonify([])
+    
+    gallery_id = gallery.data[0]["id"]
+    
+    # Fetch all entries in this gallery
+    res = (
+        _Client.table("gallery_entries")
+        .select("*")
+        .eq("gallery_id", gallery_id)
+        .execute()
+    )
+    
+    return jsonify(res.data)
+
+
+@blp.route("/images/<uuid:image_uuid>/thumbnail", methods=["GET"])
+@blp.doc(security=[{"BearerAuth": []}])
+@require_auth
+def getThumbnail(image_uuid: uuid):
+    try:
+        user_id = str(g.sub_uuid)
+        thumb_data = _Client.storage.from_("thumbnails").download(f"{user_id}/{str(image_uuid)}")
+        response = make_response(thumb_data)
+        response.headers.set('Content-Type', 'image/png')
+        return response
+    except Exception as e:
+        print(f"[THUMBNAIL ERROR] {type(e).__name__}: {e}")
+        return jsonify({"error": str(e)}), 404
 
 
 @blp.route("/images/<uuid:image_uuid>", methods=["DELETE"])

@@ -171,7 +171,7 @@
                 <div class="chat-expanded-content"
                     style="display: flex; flex-direction: column; height: 100%; width: 100%;">
                     <div class="chat-header">
-                        <div style="flex: 1; white-space: normal;">
+                        <div style="flex: 1; min-width: 0; white-space: normal;">
                             <h3 id="chatHeaderTitle" class="chat-header-title">Critique & Chat Console</h3>
                             <p id="chatHeaderSub" style="font-size: 11.5px; color: #8C877E; margin-top: 2px;">Select a
                                 drawing card to inspect history and trigger Gemini review.</p>
@@ -211,11 +211,14 @@
                     </div>
 
                     <!-- Chat Composer Form -->
-                    <form id="chatComposer" class="chat-composer" onsubmit="handleSendChatMessage(event)"
-                        style="display: none;">
+                    <form id="chatComposer" class="chat-composer" onsubmit="handleSendChatMessage(event)">
                         <input type="text" id="chatInput" class="chat-input"
-                            placeholder="Ask Anchor about your lighting, anatomy or composition..." required>
-                        <button type="submit" class="block-btn" style="width: auto; padding: 0 18px;">
+                            placeholder="Select a drawing card to start chatting..." 
+                            style="background-color: transparent; border-color: #8C877E; color: #8C877E; opacity: 0.5; cursor: not-allowed;" 
+                            disabled required>
+                        <button type="submit" id="chatSubmitBtn" class="block-btn" 
+                            style="width: auto; padding: 0 18px; background-color: transparent; border: 2.5px solid #8C877E; color: #8C877E; opacity: 0.5; cursor: not-allowed; box-shadow: none;" 
+                            disabled>
                             Anchor
                         </button>
                     </form>
