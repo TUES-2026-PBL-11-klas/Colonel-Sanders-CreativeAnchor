@@ -35,6 +35,11 @@ spec:
                 secretKeyRef:
                   name: supabase-secrets
                   key: jwt-secret
+            - name: PGRST_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-secrets
+                  key: jwt-secret
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:

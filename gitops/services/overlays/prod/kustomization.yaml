@@ -8,5 +8,5 @@ patches:
 
 images:
   - name: creativeanchor/creative-anchor
-    newName: creativeanchoracr.azurecr.io/creativeanchor/creative-anchor
+    newName: creativeanchoracr.azurecr.io/creative-anchor-backend
     newTag: latest

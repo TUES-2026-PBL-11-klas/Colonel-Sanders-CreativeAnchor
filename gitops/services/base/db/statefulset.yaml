@@ -34,6 +34,8 @@ spec:
                 secretKeyRef:
                   name: app-secrets
                   key: db-password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data

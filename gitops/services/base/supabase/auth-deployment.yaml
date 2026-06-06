@@ -42,6 +42,8 @@ spec:
               value: "true"
             - name: GOTRUE_MAILER_AUTOCONFIRM
               value: "true"
+            - name: API_EXTERNAL_URL
+              value: http://20.126.24.248
           resources:
             requests:
               cpu: "50m"

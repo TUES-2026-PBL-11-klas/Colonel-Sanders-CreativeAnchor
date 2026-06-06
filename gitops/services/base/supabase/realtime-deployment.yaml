@@ -46,6 +46,8 @@ spec:
                   key: jwt-secret
             - name: PORT
               value: "4000"
+            - name: RLIMIT_NOFILE
+              value: "10000"
           resources:
             requests:
               cpu: "50m"

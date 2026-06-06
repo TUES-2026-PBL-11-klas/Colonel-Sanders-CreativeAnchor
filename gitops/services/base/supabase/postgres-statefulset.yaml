@@ -38,6 +38,8 @@ spec:
                 secretKeyRef:
                   name: supabase-secrets
                   key: db-password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
           resources:
             requests:
               cpu: "50m"
