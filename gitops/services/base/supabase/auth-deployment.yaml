@@ -22,11 +22,13 @@ spec:
           env:
             - name: GOTRUE_DB_DRIVER
               value: postgres
-            - name: GOTRUE_DB_DATABASE_URL
+            - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: supabase-secrets
-                  key: db-url
+                  key: db-password
+            - name: GOTRUE_DB_DATABASE_URL
+              value: postgresql://supabase_auth_admin:$(DB_PASSWORD)@supabase-postgres.supabase.svc.cluster.local:5432/postgres
             - name: GOTRUE_SITE_URL
               value: http://localhost:3000
             - name: GOTRUE_API_HOST

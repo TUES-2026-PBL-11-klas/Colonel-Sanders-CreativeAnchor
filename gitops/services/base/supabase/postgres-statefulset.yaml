@@ -17,29 +17,28 @@ spec:
       labels:
         app: supabase-postgres
     spec:
+      securityContext:
+        fsGroup: 999
+      initContainers:
+        - name: volume-permissions
+          image: supabase/postgres:15.1.1.47
+          command: ["sh", "-c", "TARGET_UID=$(id -u postgres); TARGET_GID=$(id -g postgres); echo \"Target UID is $TARGET_UID, GID is $TARGET_GID\"; chown -R $TARGET_UID:$TARGET_GID /var/lib/postgresql/data; chmod 700 /var/lib/postgresql/data; ls -la /var/lib/postgresql"]
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
       containers:
         - name: postgres
           image: supabase/postgres:15.1.1.47
           ports:
             - containerPort: 5432
           env:
-            - name: POSTGRES_DB
-              valueFrom:
-                secretKeyRef:
-                  name: supabase-secrets
-                  key: db-name
-            - name: POSTGRES_USER
-              valueFrom:
-                secretKeyRef:
-                  name: supabase-secrets
-                  key: db-user
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: supabase-secrets
                   key: db-password
-            - name: PGDATA
-              value: /var/lib/postgresql/data/pgdata
           resources:
             requests:
               cpu: "50m"

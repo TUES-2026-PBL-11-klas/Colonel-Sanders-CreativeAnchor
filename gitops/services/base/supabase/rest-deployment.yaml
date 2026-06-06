@@ -20,13 +20,15 @@ spec:
         - name: rest
           image: postgrest/postgrest:v12.2.0
           env:
-            - name: PGRST_DB_URI
+            - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: supabase-secrets
-                  key: db-url
+                  key: db-password
+            - name: PGRST_DB_URI
+              value: postgresql://authenticator:$(DB_PASSWORD)@supabase-postgres.supabase.svc.cluster.local:5432/postgres
             - name: PGRST_DB_SCHEMA
-              value: public
+              value: public,storage,graphql_public
             - name: PGRST_DB_ANON_ROLE
               value: anon
             - name: PGRST_JWT_SECRET

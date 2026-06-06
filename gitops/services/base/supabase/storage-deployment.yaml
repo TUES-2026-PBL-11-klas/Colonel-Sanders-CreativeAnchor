@@ -40,11 +40,13 @@ spec:
                 secretKeyRef:
                   name: supabase-secrets
                   key: jwt-secret
-            - name: DATABASE_URL
+            - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: supabase-secrets
-                  key: db-url
+                  key: db-password
+            - name: DATABASE_URL
+              value: postgresql://supabase_storage_admin:$(DB_PASSWORD)@supabase-postgres.supabase.svc.cluster.local:5432/postgres
             - name: FILE_SIZE_LIMIT
               value: "52428800"
             - name: STORAGE_BACKEND
