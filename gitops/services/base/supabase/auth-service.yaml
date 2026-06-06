@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: supabase-auth
+  namespace: supabase
+  labels:
+    app: supabase-auth
+spec:
+  selector:
+    app: supabase-auth
+  ports:
+    - name: http
+      port: 9999
+      targetPort: 9999
+  type: ClusterIP
