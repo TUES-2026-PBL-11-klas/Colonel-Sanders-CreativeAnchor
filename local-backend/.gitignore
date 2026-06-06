@@ -1,0 +1,8 @@
+/node_modules
+/sync_folder/*
+!/sync_folder/.gitkeep
+/thumbnails/*
+!/thumbnails/.gitkeep
+local_db.json
+global_settings.json
+clean_recovered.js

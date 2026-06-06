@@ -1,0 +1,29 @@
+# Disable node-exporter (saves 2 pods - 1 per node, DaemonSet)
+nodeExporter:
+  enabled: false
+
+# Disable alertmanager (saves 1 pod)
+alertmanager:
+  enabled: false
+
+grafana:
+  # Disable persistence to avoid PVC scheduling issues
+  persistence:
+    enabled: false
+  sidecar:
+    dashboards:
+      enabled: true
+      searchNamespace: ALL
+
+prometheus:
+  prometheusSpec:
+    retention: 10d
+    # Use emptyDir instead of PVC to avoid scheduling delays
+    storageSpec: {}
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi

@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: supabase-studio
+  namespace: supabase
+  labels:
+    app: supabase-studio
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: supabase-studio
+  template:
+    metadata:
+      labels:
+        app: supabase-studio
+    spec:
+      containers:
+        - name: studio
+          image: supabase/studio:2024.06.10
+          env:
+            - name: SUPABASE_URL
+              value: http://supabase-kong.supabase.svc.cluster.local
+            - name: SUPABASE_ANON_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-secrets
+                  key: anon-key
+            - name: SUPABASE_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-secrets
+                  key: service-role-key
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          ports:
+            - containerPort: 3000

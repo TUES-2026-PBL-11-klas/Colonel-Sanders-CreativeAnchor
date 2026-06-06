@@ -1,0 +1,12 @@
+Flask==3.0.2
+flask-smorest==0.44.0
+marshmallow==3.21.0
+python-dotenv==1.0.1
+pytest==8.2.0
+gunicorn>=21.2
+bcrypt==5.0.0
+prometheus_flask_exporter
+requests
+supabase==2.25.0
+websockets
+google-genai

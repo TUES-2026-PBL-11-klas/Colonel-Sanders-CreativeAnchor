@@ -1,0 +1,1254 @@
+/* src/styles.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,500;0,600;0,700;1,400&display=swap');
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+input, textarea, select, button {
+    -webkit-app-region: no-drag;
+}
+
+body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: #1A1917; /* Warm Velvet Cocoa Dark Paper */
+    color: #EAE6DF; /* Soft Ivory light text (low eye strain) */
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+/* ----------------------------------------------------
+   DESKTOP CUSTOM FRAME & DRAGGABLE TITLEBAR
+   ---------------------------------------------------- */
+.window-titlebar {
+    height: 32px;
+    background-color: #131211; /* Deepest Espresso */
+    border-bottom: 2px solid #3C3935; /* Warm border */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 0 0 15px; /* 0 on right to let controls align to edge */
+    -webkit-app-region: drag; /* Makes the title bar draggable! */
+    user-select: none;
+    z-index: 1000;
+    width: 100%;
+    flex-shrink: 0;
+}
+
+.window-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: #A59E92; /* Muted Sand */
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+}
+
+.window-controls {
+    display: flex;
+    height: 100%;
+    -webkit-app-region: no-drag; /* Prevents dragging over title control buttons */
+}
+
+.window-control-btn {
+    width: 46px;
+    height: 100%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    outline: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #A59E92;
+    transition: background-color 0.1s ease, color 0.1s ease;
+}
+
+.window-control-btn:hover {
+    background-color: #2C2925; /* Dark warm charcoal */
+    color: #EAE6DF;
+}
+
+.window-control-btn:active {
+    background-color: #3C3935;
+}
+
+.window-control-btn.close:hover {
+    background-color: #E81123; /* Windows close red */
+    color: #FFFFFF;
+}
+
+.window-control-btn.close:active {
+    background-color: #F1707A;
+}
+
+/* Toggle maximize and restore icons based on state */
+.window-control-btn.maximize .icon-restore {
+    display: none;
+}
+.window-control-btn.maximize .icon-max {
+    display: inline-block;
+}
+
+.window-maximized .window-control-btn.maximize .icon-restore {
+    display: inline-block;
+}
+.window-maximized .window-control-btn.maximize .icon-max {
+    display: none;
+}
+
+.app-main-layout {
+    display: flex;
+    flex: 1;
+    width: 100%;
+    overflow: hidden;
+    height: calc(100vh - 32px); /* subtract titlebar height */
+}
+
+/* ----------------------------------------------------
+   CUSTOM PREMIUM DARK SCROLLBARS
+   ---------------------------------------------------- */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #131211; /* Match darkest panels */
+}
+
+::-webkit-scrollbar-thumb {
+    background: #3C3935; /* Warm Sand border tone */
+    border-radius: 4px;
+    border: 2px solid #131211;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #FF6200; /* Glowing Orange on hover! */
+}
+
+/* Typography Defaults */
+h1, h2, h3, .brand-serif {
+    font-family: 'Lora', Georgia, serif;
+    font-weight: 700;
+    color: #F5F2EB; /* Bright Warm Ivory */
+}
+
+/* ----------------------------------------------------
+   EXPANDABLE BIG LEFT SIDEBAR
+   ---------------------------------------------------- */
+.dashboard-sidebar {
+    width: 280px;
+    background-color: #131211; /* Deepest Charcoal Chocolate */
+    border-right: 2px solid #3C3935; /* Warm sand-charcoal border */
+    padding: 25px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    transition: width 0.4s cubic-bezier(0.25, 1, 0.5, 1), 
+                padding 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    overflow: hidden;
+    z-index: 15;
+    position: relative;
+}
+
+.dashboard-sidebar.collapsed {
+    width: 60px;
+    padding: 25px 0;
+    align-items: center;
+}
+
+.sidebar-expanded-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 25px;
+}
+
+/* Expanded contents wrapper - animated opacity & visibility to avoid choppy display snaps */
+.sidebar-expanded-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    min-width: 240px; /* Crucial to lock structural width during collapse */
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.25s cubic-bezier(0.25, 1, 0.5, 1),
+                visibility 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.dashboard-sidebar.collapsed .sidebar-expanded-content {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    position: absolute; /* Remove from flex flow to allow clean centering of collapsed elements */
+}
+
+/* Hide/show elements based on collapse state */
+.sidebar-collapsed-toggle,
+.sidebar-collapsed-avatar {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    position: absolute;
+    transition: opacity 0.25s cubic-bezier(0.25, 1, 0.5, 1),
+                visibility 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.dashboard-sidebar.collapsed .sidebar-collapsed-toggle,
+.dashboard-sidebar.collapsed .sidebar-collapsed-avatar {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    position: relative; /* Re-engage in flex flow for automatic vertical spacing */
+}
+
+/* Dock Action Buttons */
+.dock-toggle-btn {
+    background: none;
+    border: none;
+    color: #A59E92;
+    cursor: pointer;
+    outline: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+}
+
+.dock-toggle-btn:hover {
+    background-color: #1E1C1A;
+}
+
+.dock-toggle-btn:hover .sidebar-icon-shape,
+.dock-toggle-btn:hover .chat-icon-shape {
+    border-color: #FF6200;
+}
+
+.dock-toggle-btn:hover .sidebar-icon-shape::after,
+.dock-toggle-btn:hover .chat-icon-shape::after {
+    background-color: #FF6200;
+}
+
+/* CSS Vector Shapes replicating NotebookLM */
+.sidebar-icon-shape {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #A59E92;
+    border-radius: 2px;
+    position: relative;
+    transition: border-color 0.15s ease;
+}
+
+.sidebar-icon-shape::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 4px;
+    width: 2px;
+    background-color: #A59E92;
+    transition: background-color 0.15s ease;
+}
+
+.chat-icon-shape {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #A59E92;
+    border-radius: 2px;
+    position: relative;
+    transition: border-color 0.15s ease;
+}
+
+.chat-icon-shape::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 4px;
+    width: 2px;
+    background-color: #A59E92;
+    transition: background-color 0.15s ease;
+}
+
+/* Matching Profile Icon and Profile Button style */
+.dock-avatar-btn,
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    background-color: #22201D; /* Card Dark Paper */
+    color: #EAE6DF; /* Soft Ivory */
+    border: 2.5px solid #3C3935; /* Warm border */
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px; /* Blocky border radius */
+    box-shadow: 2px 2px 0px #131211; /* Brutalist flat shadow */
+    transition: all 0.15s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.dock-avatar-btn {
+    cursor: pointer;
+    outline: none;
+}
+
+.dock-avatar-btn:hover {
+    transform: scale(1.05);
+    border-color: #FF6200;
+    color: #FF6200;
+    box-shadow: 0px 0px 8px rgba(255, 98, 0, 0.3);
+}
+
+/* Custom Chat Paper Plane Button */
+.dock-chat-btn {
+    width: 36px;
+    height: 36px;
+    background-color: #FF6200; /* Glowing Orange */
+    color: #FFFFFF; /* White Vector SVG Icon */
+    border: 2.5px solid #3C3935;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 4px; /* Blocky border radius matching profile avatar */
+    box-shadow: 2px 2px 0px #131211;
+    transition: all 0.15s cubic-bezier(0.25, 1, 0.5, 1);
+    outline: none;
+}
+
+.dock-chat-btn:hover {
+    transform: scale(1.05);
+    border-color: #FF6200;
+    box-shadow: 0px 0px 8px rgba(255, 98, 0, 0.4);
+}
+
+.brand-section {
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
+.brand-title {
+    font-size: 24px;
+    letter-spacing: -0.5px;
+    color: #F5F2EB;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.brand-dot {
+    width: 10px;
+    height: 10px;
+    background-color: #FF6200;
+    border: 2px solid #F5F2EB;
+}
+
+.config-section {
+    margin-top: 25px;
+    flex: 1;
+    white-space: nowrap;
+}
+
+.config-label {
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #A59E92; /* Muted Sand */
+    margin-bottom: 8px;
+    display: block;
+}
+
+/* Folder Label Card Styling */
+.folder-label-card {
+    background-color: #1E1C1A;
+    border: 2px solid #3C3935;
+    border-radius: 4px;
+    padding: 15px;
+    box-shadow: 2px 2px 0px #131211;
+    margin-bottom: 18px;
+    white-space: normal;
+}
+
+.folder-path-text {
+    font-family: monospace;
+    font-size: 11px;
+    background: #131211;
+    padding: 8px;
+    border-radius: 2px;
+    border: 1px solid #3C3935;
+    margin-top: 8px;
+    display: block;
+    word-break: break-all;
+    color: #FF6200;
+}
+
+.config-input {
+    width: 100%;
+    padding: 12px;
+    font-family: inherit;
+    font-size: 14px;
+    border: 2.5px solid #3C3935;
+    background-color: #1A1917;
+    color: #EAE6DF;
+    outline: none;
+    border-radius: 4px;
+    box-shadow: 2px 2px 0px #131211;
+    transition: all 0.1s ease;
+    margin-bottom: 12px;
+}
+
+.config-input:focus {
+    border-color: #FF6200;
+    box-shadow: 3px 3px 0px #3C3935;
+}
+
+.block-btn {
+    padding: 12px;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 14px;
+    background-color: #FF6200;
+    color: #FFFFFF;
+    border: 2.5px solid #131211;
+    cursor: pointer;
+    outline: none;
+    border-radius: 4px;
+    box-shadow: 3px 3px 0px #131211;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.block-btn:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0px #131211;
+}
+
+.block-btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0px #131211;
+}
+
+.block-btn-secondary {
+    background-color: #22201D;
+    color: #EAE6DF;
+    border-color: #3C3935;
+}
+
+.block-btn-secondary:hover {
+    background-color: #2D2A26;
+}
+
+.device-widget {
+    background-color: #1E1C1A;
+    border: 2px solid #3C3935;
+    border-radius: 4px;
+    padding: 15px;
+    margin-top: 25px;
+    box-shadow: 2px 2px 0px #131211;
+    white-space: normal;
+}
+
+.device-widget-title {
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #A59E92;
+    margin-bottom: 6px;
+}
+
+.device-widget-id {
+    font-family: monospace;
+    font-size: 11px;
+    color: #EAE6DF;
+    word-break: break-all;
+    background: #131211;
+    padding: 5px;
+    border: 1px solid #3C3935;
+}
+
+/* User Session Control Panel at bottom of sidebar */
+.user-panel {
+    border-top: 2px dashed #3C3935;
+    padding-top: 20px;
+    margin-top: auto;
+    white-space: nowrap;
+}
+
+.user-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+/* User Profile avatar is styled jointly above */
+
+.user-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.user-name {
+    font-weight: 700;
+    font-size: 13.5px;
+}
+
+.user-email {
+    font-size: 11px;
+    color: #A59E92;
+}
+
+/* ----------------------------------------------------
+   MAIN WORKSPACE CONTAINER
+   ---------------------------------------------------- */
+.workspace-pane-container {
+    flex: 1;
+    display: flex;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* ----------------------------------------------------
+   CENTER GALLERY CANVAS explorer
+   ---------------------------------------------------- */
+.workspace-left-gallery {
+    flex: 1;
+    overflow-y: auto;
+    height: 100%;
+    padding: 40px;
+}
+
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    gap: 15px;
+}
+
+.main-header-info h2 {
+    font-size: 28px;
+}
+
+.main-header-info p {
+    font-size: 14px;
+    color: #A59E92;
+    margin-top: 4px;
+}
+
+/* Stagnant Reminders Alert Banner */
+.burnout-alert-banner {
+    background-color: #2A1F1B;
+    border: 3px solid #FF6200;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 4px 4px 0px #131211;
+    animation: alertPulse 3s infinite ease-in-out;
+}
+
+@keyframes alertPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.01); }
+    100% { transform: scale(1); }
+}
+
+.burnout-alert-icon {
+    font-size: 24px;
+    font-weight: 700;
+    color: #FF6200;
+}
+
+.burnout-alert-text h4 {
+    font-weight: 700;
+    color: #FF6200;
+    font-size: 16px;
+}
+
+.burnout-alert-text p {
+    font-size: 13.5px;
+    color: #EAE6DF;
+    margin-top: 4px;
+    line-height: 1.4;
+}
+
+/* Gallery Grid & Cards */
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 30px;
+    margin-top: 10px;
+}
+
+/* Brutalist Art Card */
+.art-card {
+    background-color: #22201D; /* Card Dark Paper */
+    border: 3px solid #3C3935;
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 4px 4px 0px #131211;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+.art-card:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 7px 7px 0px #131211;
+    border-color: #A59E92;
+}
+
+.art-card-preview {
+    height: 170px;
+    background-color: #1A1917;
+    border-bottom: 3px solid #3C3935;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+
+.art-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Fallback Art Icons - Giant bold extensions instead of emojis */
+.art-card-fallback {
+    flex: 1;
+    width: 100%;
+    height: 170px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #F5F2EB;
+    font-weight: 800;
+    font-size: 32px;
+    letter-spacing: 1px;
+    position: relative;
+    font-family: 'Inter', system-ui, sans-serif;
+}
+
+.art-card-fallback.ext-clip { background-color: #1F5F8B; } /* Clip Studio Blue */
+.art-card-fallback.ext-psd { background-color: #0A2E5C; } /* PSD Royal Blue */
+.art-card-fallback.ext-kra { background-color: #1B7235; } /* Krita Forest Green */
+.art-card-fallback.ext-sai { background-color: #AD6E00; } /* Paint Tool SAI Dark Amber */
+.art-card-fallback.ext-procreate { background-color: #8C228E; } /* Procreate Purple */
+.art-card-fallback.ext-other { background-color: #4A4641; }
+
+.fallback-ext-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-family: monospace;
+    font-size: 11px;
+    padding: 3px 6px;
+    background-color: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 2px;
+}
+
+.fallback-icon {
+    font-size: 15px;
+    font-weight: 500;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 6px;
+    letter-spacing: 1.5px;
+}
+
+/* Badges on Card Preview */
+.card-badges {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    z-index: 5;
+}
+
+.master-badge {
+    background-color: #FF6200;
+    color: #FFFFFF;
+    font-weight: 800;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 4px 8px;
+    border: 2px solid #131211;
+    border-radius: 3px;
+    box-shadow: 2px 2px 0px #131211;
+    text-align: center;
+    width: 85px;
+    display: inline-block;
+}
+
+.sync-badge {
+    background-color: #2A1F1B;
+    color: #FF6200;
+    font-weight: 700;
+    font-size: 9px;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 3px 6px;
+    border: 1.5px solid #131211;
+    border-radius: 2px;
+    width: 85px;
+    display: inline-block;
+}
+
+.sync-badge.synced {
+    background-color: #1A3E26;
+    color: #5CD081;
+}
+
+.sync-badge.cloud {
+    background-color: #1F2E3D;
+    color: #5CADD0;
+}
+
+/* Card Body Content */
+.art-card-body {
+    padding: 18px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.art-card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #F5F2EB;
+    word-break: break-all;
+    line-height: 1.3;
+    margin-bottom: 12px;
+    min-height: 40px;
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.art-card-meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    border-top: 1.5px dashed #3C3935;
+    padding-top: 10px;
+}
+
+.art-card-meta-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.art-card-meta-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #A59E92;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+}
+
+.art-card-meta-val {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #EAE6DF;
+}
+
+/* ----------------------------------------------------
+   RIGHT EXPANDABLE CHAT PANE
+   ---------------------------------------------------- */
+/* ----------------------------------------------------
+   RIGHT EXPANDABLE CHAT PANE
+   ---------------------------------------------------- */
+.workspace-right-chat {
+    width: 380px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: #1A1917; /* Warm dark paper */
+    border-left: 2px solid #3C3935;
+    transition: width 0.4s cubic-bezier(0.25, 1, 0.5, 1), 
+                padding 0.4s cubic-bezier(0.25, 1, 0.5, 1),
+                background-color 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    overflow: hidden;
+    justify-content: space-between;
+    z-index: 15;
+    position: relative;
+}
+
+.workspace-right-chat.collapsed {
+    width: 60px;
+    padding: 25px 0;
+    align-items: center;
+    background-color: #131211; /* Uniform docked color when collapsed */
+}
+
+/* Expanded content wrapper - animated opacity & visibility to avoid choppy display snaps */
+.chat-expanded-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    min-width: 340px; /* Lock structural width during collapse */
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.25s cubic-bezier(0.25, 1, 0.5, 1),
+                visibility 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.workspace-right-chat.collapsed .chat-expanded-content {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    position: absolute; /* Remove from flex flow to allow clean centering of collapsed elements */
+}
+
+/* Hide/show elements based on right chat collapse state */
+.chat-collapsed-toggle,
+.chat-collapsed-txt-btn {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    position: absolute;
+    transition: opacity 0.25s cubic-bezier(0.25, 1, 0.5, 1),
+                visibility 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.workspace-right-chat.collapsed .chat-collapsed-toggle,
+.workspace-right-chat.collapsed .chat-collapsed-txt-btn {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    position: relative; /* Re-engage in flex flow for automatic vertical spacing */
+}
+
+/* Brutalist Art Chat Panel */
+.chat-header {
+    padding: 20px;
+    border-bottom: 3px solid #3C3935;
+    background-color: #131211;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    white-space: nowrap;
+    gap: 15px;
+}
+
+.chat-header-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #F5F2EB;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-history {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.message-bubble {
+    padding: 15px;
+    border-radius: 4px;
+    line-height: 1.45;
+    font-size: 15px;
+    max-width: 85%;
+}
+
+.message-bubble.user {
+    background-color: #131211;
+    align-self: flex-end;
+    border: 2.5px solid #3C3935;
+    box-shadow: 2px 2px 0px #0A0909;
+}
+
+.message-bubble.gemini {
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+    align-self: flex-start;
+    padding: 10px 0;
+    max-width: 100%;
+}
+
+.message-bubble.gemini.temp-loading {
+    background-color: #22201D;
+    border: 2.5px solid #3C3935;
+    box-shadow: 2px 2px 0px #131211;
+    padding: 15px;
+    max-width: 85%;
+}
+
+.message-author {
+    font-weight: 700;
+    font-size: 11px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+
+.message-author.gemini { color: #FF6200; }
+
+.chat-composer {
+    padding: 20px;
+    border-top: 3px solid #3C3935;
+    background-color: #131211;
+    display: flex;
+    gap: 10px;
+}
+
+.chat-input {
+    flex: 1;
+    padding: 12px;
+    border: 2.5px solid #3C3935;
+    background-color: #1E1C1A;
+    outline: none;
+    font-family: inherit;
+    font-size: 15px;
+    border-radius: 4px;
+    color: #EAE6DF;
+    box-shadow: 2px 2px 0px #131211;
+}
+
+.chat-input:focus {
+    border-color: #FF6200;
+}
+
+/* Modal details */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(19, 18, 17, 0.75);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.modal-content {
+    background-color: #1A1917;
+    border: 3px solid #3C3935;
+    border-radius: 4px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 6px 6px 0px #131211;
+    overflow: hidden;
+    animation: modalPop 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes modalPop {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.modal-header {
+    background-color: #131211;
+    padding: 20px;
+    border-bottom: 3px solid #3C3935;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+.modal-footer {
+    padding: 15px 25px 25px 25px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.modal-close {
+    font-size: 24px;
+    font-weight: 700;
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: #EAE6DF;
+    line-height: 1;
+}
+
+/* Custom completely-hidden state when no drawing is active */
+.workspace-right-chat.completely-hidden {
+    display: none !important;
+}
+
+/* ----------------------------------------------------
+   ANIMATED LOADING DOTS
+   ---------------------------------------------------- */
+.dots-loader {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 12px;
+    vertical-align: middle;
+}
+
+.dots-loader span {
+    width: 6px;
+    height: 6px;
+    background-color: currentColor;
+    border-radius: 50%;
+    display: inline-block;
+    animation: dots-flash 1.4s infinite both;
+}
+
+.dots-loader span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.dots-loader span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes dots-flash {
+    0%, 80%, 100% {
+        opacity: 0.2;
+    }
+    40% {
+        opacity: 1;
+    }
+}
+
+.dots-loader-container {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 4px 0;
+}
+
+/* ----------------------------------------------------
+   PRETTY CRITIQUE STYLING (JSON renderer)
+   ---------------------------------------------------- */
+.critique-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+
+.critique-meta-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1.5px solid #3C3935;
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.critique-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.critique-meta-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #A59E92;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.critique-meta-val {
+    font-size: 15px;
+    color: #EAE6DF;
+}
+
+.critique-trigger-box {
+    background: rgba(255, 98, 0, 0.08);
+    border-left: 3px solid #FF6200;
+    padding: 10px 12px;
+    border-radius: 2px;
+    font-size: 12.5px;
+    margin-top: 4px;
+}
+
+.critique-trigger-box strong {
+    color: #FF6200;
+    display: block;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+}
+
+.critique-section-title {
+    font-family: 'Lora', Georgia, serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: #F5F2EB;
+    border-bottom: 2px solid #3C3935;
+    padding-bottom: 6px;
+    margin-top: 10px;
+}
+
+.critique-audit-item {
+    border: 2px solid #3C3935;
+    border-radius: 4px;
+    padding: 12px;
+    background: #1A1917;
+}
+
+.critique-audit-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.critique-audit-category {
+    font-size: 10px;
+    font-weight: 700;
+    color: #FF6200;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+.critique-audit-issue {
+    font-size: 16px;
+    font-weight: 700;
+    color: #F5F2EB;
+}
+
+.critique-audit-context {
+    font-size: 11px;
+    color: #8C877E;
+    margin-bottom: 8px;
+    font-style: italic;
+}
+
+.critique-audit-desc {
+    font-size: 15px;
+    line-height: 1.5;
+    color: #EAE6DF;
+    margin-bottom: 8px;
+}
+
+.critique-burnout-connection {
+    background: rgba(200, 90, 62, 0.12);
+    border-left: 3px solid #C85A3E;
+    padding: 8px 10px;
+    border-radius: 2px;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.critique-burnout-connection strong {
+    color: #E58A75;
+}
+
+.critique-insight-box {
+    background: #22201D;
+    border: 2px solid #3C3935;
+    border-radius: 4px;
+    padding: 15px;
+    box-shadow: 2px 2px 0px #131211;
+}
+
+.critique-insight-box h4 {
+    font-family: 'Lora', Georgia, serif;
+    font-size: 15px;
+    color: #F5F2EB;
+    margin-bottom: 8px;
+}
+
+.critique-insight-box p {
+    font-size: 15px;
+    line-height: 1.5;
+    color: #A59E92;
+}
+
+.critique-action-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.critique-action-step {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.critique-step-num {
+    background: #FF6200;
+    color: #FFFFFF;
+    font-weight: 700;
+    font-size: 12px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.critique-step-content {
+    flex: 1;
+}
+
+.critique-step-text {
+    font-size: 15px;
+    line-height: 1.5;
+    color: #EAE6DF;
+    margin-bottom: 4px;
+}
+
+.critique-step-benefit {
+    font-size: 14px;
+    color: #4CA8A8;
+}
+
+.critique-step-benefit strong {
+    text-transform: uppercase;
+    font-size: 9px;
+    letter-spacing: 0.5px;
+}

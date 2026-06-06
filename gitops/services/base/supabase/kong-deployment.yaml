@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: supabase-kong
+  namespace: supabase
+  labels:
+    app: supabase-kong
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: supabase-kong
+  template:
+    metadata:
+      labels:
+        app: supabase-kong
+    spec:
+      containers:
+        - name: kong
+          image: kong:3.6
+          env:
+            - name: KONG_DATABASE
+              value: "off"
+            - name: KONG_DECLARATIVE_CONFIG
+              value: /etc/kong/kong.yml
+            - name: KONG_PROXY_LISTEN
+              value: "0.0.0.0:8000"
+            - name: KONG_ADMIN_LISTEN
+              value: "127.0.0.1:8001"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "128Mi"
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: kong-config
+              mountPath: /etc/kong
+      volumes:
+        - name: kong-config
+          configMap:
+            name: supabase-kong-config

@@ -1,0 +1,76 @@
+{
+  "name": "colonel-sanders-creativeanchor",
+  "version": "1.0.0",
+  "description": "Helper assistant for artists to manage their digital art and streamline their creative workflow.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dist": "electron-builder"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TUES-2026-PBL-11-klas/Colonel-Sanders-CreativeAnchor.git"
+  },
+  "author": "Colonel Sanders",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/TUES-2026-PBL-11-klas/Colonel-Sanders-CreativeAnchor/issues"
+  },
+  "homepage": "https://github.com/TUES-2026-PBL-11-klas/Colonel-Sanders-CreativeAnchor#readme",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "electron-store": "^11.0.2"
+  },
+  "devDependencies": {
+    "electron": "^42.3.2",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.creativeanchor.app",
+    "productName": "Creative Anchor",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../local-backend",
+        "to": "local-backend",
+        "filter": [
+          "**/*",
+          "!node_modules",
+          "!node_modules/**/*",
+          "!sync_folder",
+          "!sync_folder/**/*",
+          "!.nyc_output",
+          "!.nyc_output/**/*",
+          "!test_watch_folder",
+          "!test_watch_folder/**/*",
+          "!anchor_db.json",
+          "!ai_debug.log"
+        ]
+      },
+      {
+        "from": "../local-backend/node_modules",
+        "to": "local-backend/node_modules",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
+  }
+}

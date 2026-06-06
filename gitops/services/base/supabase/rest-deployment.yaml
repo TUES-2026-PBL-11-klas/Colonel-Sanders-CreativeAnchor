@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: supabase-rest
+  namespace: supabase
+  labels:
+    app: supabase-rest
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: supabase-rest
+  template:
+    metadata:
+      labels:
+        app: supabase-rest
+    spec:
+      containers:
+        - name: rest
+          image: supabase/postgrest:v12.2.3
+          env:
+            - name: PGRST_DB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-secrets
+                  key: db-url
+            - name: PGRST_DB_SCHEMA
+              value: public
+            - name: PGRST_DB_ANON_ROLE
+              value: anon
+            - name: PGRST_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-secrets
+                  key: jwt-secret
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          ports:
+            - containerPort: 3000

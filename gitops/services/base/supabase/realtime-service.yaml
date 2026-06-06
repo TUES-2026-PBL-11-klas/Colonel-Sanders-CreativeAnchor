@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: supabase-realtime
+  namespace: supabase
+  labels:
+    app: supabase-realtime
+spec:
+  selector:
+    app: supabase-realtime
+  ports:
+    - name: http
+      port: 4000
+      targetPort: 4000
+  type: ClusterIP
