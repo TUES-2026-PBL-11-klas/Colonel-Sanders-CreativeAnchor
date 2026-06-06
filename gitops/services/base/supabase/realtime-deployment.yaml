@@ -48,6 +48,17 @@ spec:
               value: "4000"
             - name: RLIMIT_NOFILE
               value: "10000"
+            - name: SECRET_KEY_BASE
+              valueFrom:
+                secretKeyRef:
+                  name: supabase-secrets
+                  key: jwt-secret
+            - name: SEED_SELF_HOST
+              value: "true"
+            - name: FLY_APP_NAME
+              value: supabase-realtime
+            - name: FLY_ALLOC_ID
+              value: local
           resources:
             requests:
               cpu: "50m"

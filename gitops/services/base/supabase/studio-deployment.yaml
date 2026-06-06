@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: studio
-          image: supabase/studio:2024.06.10
+          image: supabase/studio:20240612-6e8b3b0
           env:
             - name: SUPABASE_URL
               value: http://supabase-kong.supabase.svc.cluster.local
