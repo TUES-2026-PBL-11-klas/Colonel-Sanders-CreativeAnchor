@@ -30,13 +30,14 @@ def uploadImage():
         print(f"[UPLOAD ERROR] {type(e).__name__}: {e}")
         return jsonify({'error': f'Storage upload failed: {str(e)}'}), 500
 
+
 @blp.route("/images/metadata", methods=["POST"])
 @blp.doc(security=[{"BearerAuth": []}])
 @blp.arguments(ImageMetadataSchema)
 @require_auth
 def uploadMetadata(json_data):
     user_id = str(g.sub_uuid)
-    
+
     # Get or create gallery for user
     gallery = (
         _Client.table("galleries")
@@ -44,7 +45,7 @@ def uploadMetadata(json_data):
         .eq("user_id", user_id)
         .execute()
     )
-    
+
     if not gallery.data:
         # Create a new gallery for this user
         gallery_result = (
@@ -55,27 +56,34 @@ def uploadMetadata(json_data):
         gallery_id = gallery_result.data[0]["id"]
     else:
         gallery_id = gallery.data[0]["id"]
-    
-    created_at_val = json_data["createdAt"].isoformat() if "createdAt" in json_data and json_data["createdAt"] else datetime.now().isoformat()
-    updated_at_val = json_data["updatedAt"].isoformat() if "updatedAt" in json_data and json_data["updatedAt"] else datetime.now().isoformat()
-    
-    res = (
-        _Client.table("gallery_entries")
-        .insert({
-            "id": str(json_data["id"]),
-            "gallery_id": gallery_id,
-            "file_name": json_data["fileName"],
-            "status": json_data["entryStatus"].value,
-            "file_hash_sha256": json_data["fileHash"],
-            "is_compressed": False,
-            "sync_status": json_data["syncStatus"].value,
-            "retry_count": 0,
-            "created_at": created_at_val,
-            "last_modified_at": updated_at_val
-        })
-        .execute()
+
+    created_at = json_data["createdAt"]
+    created_at_val = (
+        created_at.isoformat()
+        if created_at
+        else datetime.now().isoformat()
     )
-    
+
+    updated_at = json_data["updatedAt"]
+    updated_at_val = (
+        updated_at.isoformat()
+        if updated_at
+        else datetime.now().isoformat()
+    )
+
+    _Client.table("gallery_entries").insert({
+        "id": str(json_data["id"]),
+        "gallery_id": gallery_id,
+        "file_name": json_data["fileName"],
+        "status": json_data["entryStatus"].value,
+        "file_hash_sha256": json_data["fileHash"],
+        "is_compressed": False,
+        "sync_status": json_data["syncStatus"].value,
+        "retry_count": 0,
+        "created_at": created_at_val,
+        "last_modified_at": updated_at_val
+    }).execute()
+
     return jsonify({"status": "ok"})
 
 
@@ -84,7 +92,7 @@ def uploadMetadata(json_data):
 @require_auth
 def getImages():
     user_id = str(g.sub_uuid)
-    
+
     # Find user gallery
     gallery = (
         _Client.table("galleries")
@@ -92,12 +100,12 @@ def getImages():
         .eq("user_id", user_id)
         .execute()
     )
-    
+
     if not gallery.data:
         return jsonify([])
-    
+
     gallery_id = gallery.data[0]["id"]
-    
+
     # Fetch all entries in this gallery
     res = (
         _Client.table("gallery_entries")
@@ -105,7 +113,7 @@ def getImages():
         .eq("gallery_id", gallery_id)
         .execute()
     )
-    
+
     return jsonify(res.data)
 
 
@@ -115,7 +123,9 @@ def getImages():
 def getThumbnail(image_uuid: uuid):
     try:
         user_id = str(g.sub_uuid)
-        thumb_data = _Client.storage.from_("thumbnails").download(f"{user_id}/{str(image_uuid)}")
+        thumb_data = _Client.storage.from_("thumbnails").download(
+            f"{user_id}/{str(image_uuid)}"
+        )
         response = make_response(thumb_data)
         response.headers.set('Content-Type', 'image/png')
         return response

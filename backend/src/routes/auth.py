@@ -54,10 +54,11 @@ def refresh(json_data):
     except Exception:
         return jsonify({"error": "Internal server error"}), 500
 
+
 @blp.route("/logout", methods=["POST"])
 def logout():
     try:
         _Client.auth.sign_out()
     except Exception:
-        pass  # Best-effort — always return success so the client clears local tokens.
+        pass
     return jsonify({"message": "Logged out"}), 200

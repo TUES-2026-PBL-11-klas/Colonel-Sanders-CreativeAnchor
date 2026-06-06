@@ -6,6 +6,7 @@ from src.services.GeminiService import _chat, _get_history
 from src.services.auth import require_auth
 import uuid
 import json
+from datetime import datetime
 
 blp = Blueprint("Chats", "chats", description="Chat endpoints.")
 
@@ -20,8 +21,11 @@ def newChat(json_data):
     history = json_data.get("history")
 
     # Download from the correct bucket and path.
-    # Images are uploaded to the 'images' bucket at path '{user_uuid}/{image_uuid}'.
-    image_data = _Client.storage.from_("images").download(f"{g.sub_uuid}/{str(image_uuid)}")
+    # Images are uploaded to the 'images' bucket
+    # at path '{user_uuid}/{image_uuid}'.
+    image_data = _Client.storage.from_("images").download(
+        f"{g.sub_uuid}/{str(image_uuid)}"
+    )
 
     res = _chat(image_data, custom_prompt=custom_prompt, history=history)
     return jsonify({
@@ -33,7 +37,8 @@ def newChat(json_data):
 @blp.doc(security=[{"BearerAuth": []}])
 @require_auth
 def analyzeDirect():
-    """Accepts image bytes directly in the request body — no Supabase storage needed."""
+    """Accepts image bytes directly in the request body
+    — no Supabase storage needed."""
     if "image" not in request.files:
         return jsonify({'error': 'image file is required'}), 400
 
@@ -52,33 +57,32 @@ def analyzeDirect():
         print(f"[CHAT/DIRECT ERROR] {type(e).__name__}: {e}")
         return jsonify({'error': str(e)}), 500
 
+
 @blp.route("/chat/<uuid:chat_uuid>", methods=["GET"])
 @blp.doc(security=[{"BearerAuth": []}])
 @require_auth
 def getChatContents(chat_uuid: uuid):
     return jsonify({"chat": _get_history(chat_uuid=chat_uuid)}), 200
 
+
 @blp.route("/chat/<uuid:chat_uuid>", methods=["POST"])
 @blp.doc(security=[{"BearerAuth": []}])
 @blp.arguments(NewMessageSchema)
 @require_auth
 def NewMessage(json_data, chat_uuid: uuid):
-    res = (
-        _Client.table("messages")
-        .insert({
-            "chat_id": str(chat_uuid),
-            "role": "human", #enum,
-            "content": json_data["message"]
-        })
-        .execute()
-    )
+    _Client.table("messages").insert({
+        "chat_id": str(chat_uuid),
+        "role": "human",  # enum
+        "content": json_data["message"]
+    }).execute()
+
 
 @blp.route("/chat/gallery/<uuid:gallery_entry_id>", methods=["GET"])
 @blp.doc(security=[{"BearerAuth": []}])
 @require_auth
 def getGalleryChat(gallery_entry_id: uuid):
     user_id = str(g.sub_uuid)
-    
+
     # Verify gallery entry belongs to user's gallery
     gallery = (
         _Client.table("galleries")
@@ -88,7 +92,7 @@ def getGalleryChat(gallery_entry_id: uuid):
     )
     if not gallery.data:
         return jsonify({"history": []})
-        
+
     gallery_id = gallery.data[0]["id"]
     entry = (
         _Client.table("gallery_entries")
@@ -109,12 +113,12 @@ def getGalleryChat(gallery_entry_id: uuid):
     )
     if not chat_res.data:
         return jsonify({"history": []})
-        
+
     chat_id = chat_res.data[0]["id"]
-    
+
     # Get messages
     messages = _get_history(chat_uuid=chat_id)
-    
+
     # Format messages
     formatted = []
     for msg in messages:
@@ -143,9 +147,9 @@ def syncGalleryChat(gallery_entry_id: uuid):
     )
     if not gallery.data:
         return jsonify({"error": "Gallery not found"}), 404
-        
+
     gallery_id = gallery.data[0]["id"]
-    
+
     # Check entry
     entry = (
         _Client.table("gallery_entries")
@@ -186,7 +190,7 @@ def syncGalleryChat(gallery_entry_id: uuid):
             "content": msg.get("message"),
             "created_at": msg.get("createdAt") or datetime.now().isoformat()
         })
-    
+
     if db_messages:
         _Client.table("messages").insert(db_messages).execute()
 

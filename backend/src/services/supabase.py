@@ -10,7 +10,10 @@ thumbnail_bucket = "thumbnails"
 
 
 def setupSB() -> Client:
-    _c = create_client(os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_KEY"))
+    _c = create_client(
+        os.environ.get("SUPABASE_URL"),
+        os.environ.get("SUPABASE_KEY")
+    )
     _buckets = {b.name for b in _c.storage.list_buckets()}
 
     buckets = [
@@ -46,12 +49,14 @@ def setupSB() -> Client:
 
     return _c
 
+
 _Client: Client = setupSB()
+
 
 def _upload_file(file, filename, user: uuid, bucket_name):
     file_bytes = file.read()
     content_type = file.content_type or "image/png"
-    
+
     _Client.storage.from_(bucket_name).upload(
         path=f'{str(user)}/{filename}',
         file=file_bytes,
@@ -61,9 +66,11 @@ def _upload_file(file, filename, user: uuid, bucket_name):
         }
     )
 
+
 def upload_image_thumbnail(image, thumbnail, filename: str, user: uuid):
     _upload_file(image, filename, user, image_bucket)
     _upload_file(thumbnail, filename, user, thumbnail_bucket)
+
 
 def delete_image(file_uuid: uuid):
     res = _Client.storage.from_(image_bucket).remove([str(file_uuid)])

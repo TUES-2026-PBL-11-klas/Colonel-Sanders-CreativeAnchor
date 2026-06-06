@@ -1,5 +1,4 @@
 import functools
-import os
 from flask import request, jsonify, g
 from src.services.supabase import _Client
 from supabase_auth.errors import AuthInvalidJwtError
@@ -20,7 +19,7 @@ def require_auth(f):
             g.sub_uuid = res["claims"]["sub"]
         except AuthInvalidJwtError:
             return jsonify({"error": "Invalid token"}), 401
-        except Exception as e:
+        except Exception:
             return jsonify({"error": "Auth failed"}), 401
 
         return f(*args, **kwargs)
