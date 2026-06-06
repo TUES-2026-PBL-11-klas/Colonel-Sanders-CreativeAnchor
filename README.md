@@ -70,7 +70,7 @@ Electron >42.3.2
 The project is structured as a clean monorepo:
 * **`/backend`**: Express server running on port `5000`. Monitors active drawing directories dynamically via `chokidar`, extracts `.clip` binary thumbs/Photoshop composite layers, and tracks local access history.
 * **`/frontend`**: Electron desktop application shell loaded directly with Brutalist warm Velvet paper styling templates.
-* **`/local-backend`**: 
+* **`/local-backend`**: Express.js backend used locally by the desktop application for file management and as a communication medium with the main backend.
 
 ---
 
