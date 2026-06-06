@@ -3,6 +3,9 @@ kind: Kustomization
 resources:
   - ../../base
 
+patches:
+  - path: secretstore-patch.yaml
+
 images:
   - name: creativeanchor/creative-anchor
     newName: creativeanchoracr.azurecr.io/creativeanchor/creative-anchor
